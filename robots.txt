@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://energywithmark.com.au/sitemap.xml
