@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+
+<html lang="en-AU"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Energy Assessment | Energy With Mark</title><meta content="Start a solar or battery assessment with your actual energy use and goals." name="description"/><link href="styles.css" rel="stylesheet"/><meta content="Mark Fitzpatrick" name="author"/><meta content="index,follow,max-image-preview:large" name="robots"/><meta content="website" property="og:type"/><meta content="Energy Assessment | Energy With Mark" property="og:title"/><meta content="Start a solar or battery assessment with your actual energy use and goals." property="og:description"/><meta content="Energy With Mark" property="og:site_name"/><link href="https://energywithmark.com.au/assessment.html" rel="canonical"/><meta content="https://energywithmark.com.au/assessment.html" property="og:url"/></head><body><header class="header"><div class="container nav"><a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>MARK FITZPATRICK · RENEWABLE ENERGY SPECIALIST</span></span></a><button aria-label="Open menu" class="nav-toggle">☰</button><nav class="nav-links"><a href="business.html">Business</a><a href="home.html">Home</a><a href="existing-solar.html">Existing Solar</a><a href="learn.html">Learn</a><a href="tools.html">Tools</a><a href="how-i-help.html">How I Help</a></nav><a class="btn btn-primary" href="assessment.html">Start Assessment</a></div></header><main><section class="page-hero"><div class="container"><div class="eyebrow">Energy assessment</div><h1>Start with your energy use, not a system size.</h1><p class="lead">Complete what you can. If you do not know an answer, that is fine. The form changes depending on your situation.</p></div></section>
+<section class="section-sm"><div class="container"><form class="form-card" data-backend-form="" data-form-type="assessment">
+<div class="form-section"><h2>1. About you</h2><div class="form-grid">
+<div class="field"><label for="customerType">What best describes you?</label><select id="customerType" name="customerType"><option>Homeowner</option><option>Business owner</option><option>Commercial property owner</option><option>Manager</option><option>Sporting or community organisation</option><option>Other</option></select></div>
+<div class="field"><label>Property postcode</label><input inputmode="numeric" name="postcode" placeholder="e.g. 3000"/></div>
+<div class="field full"><label>Property address</label><input name="address" placeholder="Street, suburb, state"/></div></div></div>
+<div class="form-section"><h2>2. What would you like help with?</h2><div class="choice-grid">
+<label class="choice"><input name="helpWith" type="checkbox" value="Solar"/> Solar</label>
+<label class="choice"><input name="helpWith" type="checkbox" value="Battery"/> Battery</label>
+<label class="choice"><input name="helpWith" type="checkbox" value="Solar + battery"/> Solar + battery</label>
+<label class="choice"><input name="helpWith" type="checkbox" value="Existing solar"/> Existing solar</label>
+<label class="choice"><input name="helpWith" type="checkbox" value="Reducing electricity costs"/> Reducing electricity costs</label>
+<label class="choice"><input name="helpWith" type="checkbox" value="Not sure yet"/> I'm not sure yet</label></div></div>
+<div class="form-section"><h2>3. What are you trying to achieve?</h2><div class="choice-grid">
+<label class="choice"><input name="goals" type="checkbox" value="Lower electricity bills"/> Lower electricity bills</label>
+<label class="choice"><input name="goals" type="checkbox" value="Use more of my own solar"/> Use more of my own solar</label>
+<label class="choice"><input name="goals" type="checkbox" value="Store excess solar"/> Store excess solar</label>
+<label class="choice"><input name="goals" type="checkbox" value="Prepare for an EV"/> Prepare for an EV</label>
+<label class="choice"><input name="goals" type="checkbox" value="Backup power"/> Backup power</label>
+<label class="choice"><input name="goals" type="checkbox" value="Understand whether it makes financial sense"/> Understand whether it makes financial sense</label></div></div>
+<div class="form-section"><h2>4. Electricity bill</h2><div class="form-grid">
+<div class="field"><label>Approximate bill amount ($)</label><input min="0" name="billAmount" type="number"/></div>
+<div class="field"><label>Billing period</label><select name="billingPeriod"><option>Monthly</option><option>Quarterly</option><option>Other</option><option>Not sure</option></select></div>
+<div class="field full"><label>Upload recent bill(s)</label><input accept=".pdf,.jpg,.jpeg,.png,.csv,.xlsx" data-category="Electricity Bill" multiple="" type="file"/></div></div></div>
+<div class="form-section"><h2>5. Existing solar</h2><div class="form-grid"><div class="field"><label>Do you already have solar?</label><select name="existingSolar"><option>No</option><option>Yes</option><option>Not sure</option></select></div></div>
+<div data-existing-solar="" style="display:none;margin-top:16px"><div class="form-grid">
+<div class="field"><label>Approximate solar size (kW)</label><input name="solarSize" step="0.1" type="number"/></div>
+<div class="field"><label>System age</label><select name="systemAge"><option>Under 2 years</option><option>2–5 years</option><option>5–10 years</option><option>More than 10 years</option><option>Not sure</option></select></div>
+<div class="field"><label>Inverter brand/model</label><input name="inverter"/></div>
+<div class="field"><label>Do you believe you export a lot of solar?</label><select name="highExports"><option>Not sure</option><option>Yes</option><option>No</option></select></div>
+<div class="field full"><label>Upload inverter photo or label</label><input accept="image/*" data-category="Existing Inverter" multiple="" type="file"/></div></div></div></div>
+<div class="form-section" data-residential=""><h2>6. Home energy pattern</h2><div class="form-grid">
+<div class="field"><label>When is your electricity use highest?</label><select name="usagePattern"><option>Morning</option><option>Middle of the day</option><option>Afternoon</option><option>Evening</option><option>Overnight</option><option>Fairly even</option><option>Not sure</option></select></div>
+<div class="field"><label>Do you have or plan to buy an EV?</label><select name="evStatus"><option>No</option><option>Yes</option><option>Planned</option></select></div></div></div>
+<div class="form-section" data-commercial="" style="display:none"><h2>6. Business operations</h2><div class="form-grid">
+<div class="field"><label>Business name</label><input name="businessName"/></div>
+<div class="field"><label>Business type</label><input name="businessType" placeholder="e.g. manufacturing"/></div>
+<div class="field"><label>Normal start time</label><input name="startTime" type="time"/></div>
+<div class="field"><label>Normal finish time</label><input name="finishTime" type="time"/></div>
+<div class="field full"><label>Do you have interval/smart-meter data?</label><select name="hasIntervalData"><option>No</option><option>Yes</option><option>Not sure</option></select></div>
+<div class="field full"><label>Upload interval data if available</label><input accept=".csv,.xlsx,.xls,.pdf" data-category="Interval Data" type="file"/></div></div></div>
+<div class="form-section"><h2>7. Battery interest</h2><div class="form-grid">
+<div class="field"><label>Are you considering battery storage?</label><select name="batteryInterest"><option>I want advice first</option><option>Yes</option><option>Maybe</option><option>No</option></select></div>
+<div class="field"><label>How important is backup power?</label><select name="backupImportance"><option>Not sure</option><option>Very important</option><option>Useful but not essential</option><option>Not important</option></select></div></div></div>
+<div class="form-section"><h2>8. Future needs</h2><div class="choice-grid">
+<label class="choice"><input name="futureNeeds" type="checkbox" value="EV charging"/> EV charging</label>
+<label class="choice"><input name="futureNeeds" type="checkbox" value="New machinery/equipment"/> New machinery/equipment</label>
+<label class="choice"><input name="futureNeeds" type="checkbox" value="Air conditioning/heating"/> Air conditioning/heating</label>
+<label class="choice"><input name="futureNeeds" type="checkbox" value="Business/home expansion"/> Business/home expansion</label>
+<label class="choice"><input name="futureNeeds" type="checkbox" value="Electrification"/> Electrification</label>
+<label class="choice"><input name="futureNeeds" type="checkbox" value="No major changes expected"/> No major changes expected</label></div></div>
+<div class="form-section"><h2>9. Contact details</h2><div class="form-grid">
+<div class="field"><label>Name</label><input name="name" required=""/></div>
+<div class="field"><label>Phone</label><input name="phone" required="" type="tel"/></div>
+<div class="field"><label>Email</label><input name="email" required="" type="email"/></div>
+<div class="field"><label>Preferred contact</label><select name="preferredContact"><option>Phone</option><option>Email</option><option>Text</option></select></div>
+<div class="field full"><label>Anything else I should know?</label><textarea name="notes"></textarea></div></div></div>
+<div class="notice">Files are limited to 8 MB each. Before public launch, connect this form to the included Google Apps Script backend and publish a Privacy Policy.</div>
+<div class="form-error" style="display:none;margin-top:18px;padding:14px 16px;border-radius:12px;background:#fff0f0;color:#8a2424"></div>
+<div class="submit-status" style="margin-top:16px;font-weight:700"></div>
+<div style="margin-top:20px"><div class="notice" data-privacy-notice="true">Privacy: Information you submit is intended to be used to review your enquiry, communicate with you, prepare relevant advice or proposals and, if you proceed, coordinate the project. <a href="privacy.html">Read the privacy notice.</a></div><button class="btn btn-primary" type="submit">Submit Assessment</button></div>
+<div class="success"><h3>Thanks — your assessment has been received.</h3><p>The information has been sent to Mark's assessment system. If anything else is needed before the discussion, Mark will let you know.</p><a class="btn btn-secondary" href="book.html">Book an Energy Discussion</a></div>
+</form></div></section></main><footer class="footer"><div class="container footer-grid"><div><h3>Energy With Mark</h3><p>Mark Fitzpatrick · Renewable Energy Specialist</p><p><a href="tel:+61434151237">0434 151 237</a><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au">mark.fitzpatrick@classaenergy.com.au</a></p></div><div><h3>Explore</h3><p><a href="business.html">For Businesses</a><br/><a href="home.html">For Homeowners</a><br/><a href="existing-solar.html">Existing Solar</a><br/><a href="learn.html">Knowledge Hub</a></p></div><div><h3>Start</h3><p><a href="assessment.html">Energy Assessment</a><br/><a href="upload-bill.html">Upload a Bill</a><br/><a href="tools.html">Calculator</a><br/><a href="book.html">Book a Discussion</a></p></div></div><div class="container footer-small"><a href="editorial-policy.html">Editorial &amp; advice approach</a>  ·  <a href="privacy.html">Privacy notice</a></div></footer><div class="mobile-cta"><a class="btn btn-primary" href="assessment.html">Start Assessment</a></div><script src="script.js"></script></body></html>
