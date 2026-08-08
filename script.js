@@ -1,5 +1,23 @@
-// Mark Fitzpatrick Energy Advisory — Website V7
-// Paste the deployed Google Apps Script /exec URL between the quotes when ready.
+// Energy With Mark — public website
+// Google Analytics is limited to site usage/navigation. Do not send customer PII or bill contents as Analytics event parameters.
+const GA_MEASUREMENT_ID = 'G-22EYYXBP2S';
+
+(function initialiseAnalytics() {
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID, {
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
+
+  const tag = document.createElement('script');
+  tag.async = true;
+  tag.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`;
+  document.head.appendChild(tag);
+})();
+
+// Paste the deployed Google Apps Script /exec URL between the quotes when the private backend is ready.
 const BACKEND_URL = '';
 
 const navToggle = document.querySelector('.nav-toggle');
@@ -7,6 +25,22 @@ const navLinks = document.querySelector('.nav-links');
 if (navToggle && navLinks) {
   navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
 }
+
+// Measure high-value public-site navigation without sending personal information.
+document.querySelectorAll('a[href]').forEach(link => {
+  link.addEventListener('click', () => {
+    if (typeof window.gtag !== 'function') return;
+    const rawHref = link.getAttribute('href') || '';
+    const trackedDestinations = ['assessment.html', 'upload-bill.html', 'book.html', 'tools.html'];
+    const destination = trackedDestinations.find(item => rawHref.includes(item));
+    if (!destination) return;
+    window.gtag('event', 'cta_click', {
+      destination,
+      link_text: (link.textContent || '').trim().slice(0, 80),
+      page_path: window.location.pathname
+    });
+  });
+});
 
 // Conditional assessment fields.
 const existingSolar = document.querySelector('[name="existingSolar"]');
@@ -31,7 +65,7 @@ if (customerType && residentialFields && commercialFields) {
   toggleType();
 }
 
-// Secure-ish first-version submission helper. The Apps Script backend stores files in Drive and CRM data in Sheets.
+// First-version submission helper. The future private Apps Script backend will store files in Drive and CRM data in Sheets.
 document.querySelectorAll('[data-backend-form]').forEach(form => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -53,14 +87,14 @@ document.querySelectorAll('[data-backend-form]').forEach(form => {
       fields.fileCount = files.length;
       const payload = {
         type: form.dataset.formType || 'assessment',
-        source: 'Website V7',
+        source: 'Energy With Mark Website',
         submittedAt: new Date().toISOString(),
         fields,
         files
       };
 
       if (!BACKEND_URL) {
-        // Preview mode: save a copy locally for testing but do not pretend it reached Mark.
+        // Preview mode: save a local test copy only; nothing is sent to Mark or Google Analytics.
         localStorage.setItem('markEnergyLastSubmission', JSON.stringify({ ...payload, files: files.map(f => ({name:f.name,mimeType:f.mimeType,category:f.category})) }));
         if (status) status.textContent = 'Preview complete — backend connection is not configured yet.';
         if (success) {
@@ -68,12 +102,11 @@ document.querySelectorAll('[data-backend-form]').forEach(form => {
           const title = success.querySelector('h3');
           const copy = success.querySelector('p');
           if (title) title.textContent = 'Your form is working in preview mode.';
-          if (copy) copy.textContent = 'No customer information was transmitted. Connect the Google Apps Script Web App URL in script.js to make submissions live.';
+          if (copy) copy.textContent = 'No customer information was transmitted. The private backend will be connected before live customer submissions are enabled.';
           success.scrollIntoView({behavior:'smooth', block:'center'});
         }
       } else {
         if (status) status.textContent = 'Sending securely to the assessment system…';
-        // text/plain + no-cors is intentionally used so a static GitHub Pages site can post to Apps Script.
         await fetch(BACKEND_URL, {
           method: 'POST',
           mode: 'no-cors',
@@ -86,6 +119,13 @@ document.querySelectorAll('[data-backend-form]').forEach(form => {
         if (success) {
           success.style.display = 'block';
           success.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+        // Record only that a website lead was submitted; no form fields are sent to Analytics.
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'generate_lead', {
+            form_type: form.dataset.formType || 'assessment',
+            page_path: window.location.pathname
+          });
         }
       }
     } catch (err) {
@@ -163,7 +203,7 @@ function fileToBase64(file) {
   });
 }
 
-// Lightweight calculator for the prototype only. It is deliberately indicative, not a proposal engine.
+// Lightweight calculator for exploration only. It is deliberately indicative, not a proposal engine.
 const calcBtn = document.querySelector('#calcBtn');
 if (calcBtn) {
   calcBtn.addEventListener('click', () => {
@@ -180,6 +220,9 @@ if (calcBtn) {
     document.querySelector('#batteryResult').textContent = `$${solarBattery.toLocaleString()}`;
     document.querySelector('#calcResults').style.display = 'grid';
     document.querySelector('#calcNote').style.display = 'block';
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'calculator_use', { page_path: window.location.pathname });
+    }
   });
 }
 
