@@ -26,19 +26,47 @@ if (navToggle && navLinks) {
   navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
 }
 
-// Measure high-value public-site navigation without sending personal information.
+function sendAnalyticsEvent(name, params = {}) {
+  if (typeof window.gtag !== 'function') return;
+  window.gtag('event', name, {
+    page_path: window.location.pathname,
+    ...params
+  });
+}
+
+// Measure public-site actions that show increasing customer intent.
+// Never send names, email addresses, phone numbers, form values or uploaded-file details to Analytics.
 document.querySelectorAll('a[href]').forEach(link => {
   link.addEventListener('click', () => {
-    if (typeof window.gtag !== 'function') return;
     const rawHref = link.getAttribute('href') || '';
-    const trackedDestinations = ['assessment.html', 'upload-bill.html', 'book.html', 'tools.html'];
-    const destination = trackedDestinations.find(item => rawHref.includes(item));
-    if (!destination) return;
-    window.gtag('event', 'cta_click', {
-      destination,
-      link_text: (link.textContent || '').trim().slice(0, 80),
-      page_path: window.location.pathname
-    });
+
+    if (rawHref.includes('assessment.html')) {
+      sendAnalyticsEvent('assessment_start');
+      return;
+    }
+    if (rawHref.includes('upload-bill.html')) {
+      sendAnalyticsEvent('bill_upload_start');
+      return;
+    }
+    if (rawHref.includes('book.html')) {
+      sendAnalyticsEvent('booking_start');
+      return;
+    }
+    if (rawHref.includes('tools.html')) {
+      sendAnalyticsEvent('calculator_open');
+      return;
+    }
+    if (rawHref.startsWith('tel:')) {
+      sendAnalyticsEvent('contact_click', { contact_type: 'phone' });
+      return;
+    }
+    if (rawHref.startsWith('mailto:')) {
+      sendAnalyticsEvent('contact_click', { contact_type: 'email' });
+      return;
+    }
+    if (rawHref.includes('articles/')) {
+      sendAnalyticsEvent('article_open', { article_path: rawHref.split('?')[0] });
+    }
   });
 });
 
@@ -121,12 +149,9 @@ document.querySelectorAll('[data-backend-form]').forEach(form => {
           success.scrollIntoView({behavior:'smooth', block:'center'});
         }
         // Record only that a website lead was submitted; no form fields are sent to Analytics.
-        if (typeof window.gtag === 'function') {
-          window.gtag('event', 'generate_lead', {
-            form_type: form.dataset.formType || 'assessment',
-            page_path: window.location.pathname
-          });
-        }
+        sendAnalyticsEvent('generate_lead', {
+          form_type: form.dataset.formType || 'assessment'
+        });
       }
     } catch (err) {
       console.error(err);
@@ -220,9 +245,7 @@ if (calcBtn) {
     document.querySelector('#batteryResult').textContent = `$${solarBattery.toLocaleString()}`;
     document.querySelector('#calcResults').style.display = 'grid';
     document.querySelector('#calcNote').style.display = 'block';
-    if (typeof window.gtag === 'function') {
-      window.gtag('event', 'calculator_use', { page_path: window.location.pathname });
-    }
+    sendAnalyticsEvent('calculator_use');
   });
 }
 
