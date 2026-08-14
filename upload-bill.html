@@ -142,7 +142,8 @@
     }, 45000);
 
     const onMessage = (event) => {
-      if (event.origin !== 'https://script.google.com' && event.origin !== 'https://script.googleusercontent.com') return;
+      const googleOrigin = event.origin === 'https://script.google.com' || event.origin.endsWith('.googleusercontent.com');
+      if (!googleOrigin) return;
       const data = event.data || {};
       if (data.source !== 'energy-with-mark-bill-upload-submit') return;
       const response = data.payload || {};
