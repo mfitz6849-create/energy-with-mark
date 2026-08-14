@@ -1,0 +1,115 @@
+name: IndexNow URL updates
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-indexnow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out site
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Submit changed public URLs to IndexNow
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import urllib.error
+          import urllib.request
+          import xml.etree.ElementTree as ET
+
+          HOST = "energywithmark.com.au"
+          KEY = "11d89822f5f9c1126a8ae62d883c1210"
+          KEY_LOCATION = f"https://{HOST}/{KEY}.txt"
+          ENDPOINT = "https://api.indexnow.org/indexnow"
+
+          before = os.environ.get("BEFORE", "")
+          after = os.environ.get("AFTER", "HEAD")
+          event_name = os.environ.get("EVENT_NAME", "")
+
+          def sitemap_urls():
+              root = ET.parse("sitemap.xml").getroot()
+              ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+              return [loc.text.strip() for loc in root.findall("sm:url/sm:loc", ns) if loc.text]
+
+          changed = []
+          if event_name == "workflow_dispatch":
+              changed = ["sitemap.xml"]
+          elif before and before != "0" * 40:
+              try:
+                  output = subprocess.check_output(
+                      ["git", "diff", "--name-only", before, after],
+                      text=True
+                  )
+                  changed = [line.strip() for line in output.splitlines() if line.strip()]
+              except subprocess.CalledProcessError:
+                  changed = ["sitemap.xml"]
+          else:
+              changed = ["sitemap.xml"]
+
+          shared_files = {
+              "script.js",
+              "styles.css",
+              "sitemap.xml",
+              ".github/workflows/indexnow.yml",
+              f"{KEY}.txt",
+          }
+
+          if any(path in shared_files for path in changed):
+              urls = sitemap_urls()
+          else:
+              urls = []
+              for path in changed:
+                  if path == "index.html":
+                      urls.append(f"https://{HOST}/")
+                  elif path.endswith(".html") and not path.startswith("."):
+                      urls.append(f"https://{HOST}/{path}")
+
+          urls = list(dict.fromkeys(urls))
+          if not urls:
+              print("No public page URLs changed; nothing to submit.")
+              raise SystemExit(0)
+
+          payload = {
+              "host": HOST,
+              "key": KEY,
+              "keyLocation": KEY_LOCATION,
+              "urlList": urls,
+          }
+
+          request = urllib.request.Request(
+              ENDPOINT,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json; charset=utf-8"},
+              method="POST",
+          )
+
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  status = response.status
+                  body = response.read().decode("utf-8", errors="replace")
+          except urllib.error.HTTPError as exc:
+              status = exc.code
+              body = exc.read().decode("utf-8", errors="replace")
+
+          print(f"IndexNow status: {status}")
+          print(f"Submitted {len(urls)} URL(s).")
+          if body:
+              print(body)
+
+          if status not in (200, 202):
+              raise SystemExit(f"IndexNow submission failed with HTTP {status}")
+          PY
