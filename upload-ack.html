@@ -4,9 +4,52 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>Upload receipt | Energy With Mark</title>
+  <title>Bill Upload Receipt | Energy With Mark</title>
+  <link href="styles.css" rel="stylesheet">
 </head>
 <body>
-  <p>Upload receipt processed.</p>
+<header class="header"><div class="container nav"><a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>MARK FITZPATRICK · RENEWABLE ENERGY SPECIALIST</span></span></a></div></header>
+<main>
+<section class="section"><div class="container"><div class="card" style="max-width:760px;margin:0 auto">
+  <div id="receiptSuccess" style="display:none">
+    <div class="eyebrow">Secure bill upload</div>
+    <h1>Thanks — your bill has been received.</h1>
+    <p class="lead">Your file is now in the private review queue. I will review the information you provided and contact you if anything else is needed.</p>
+    <div class="notice"><strong>What happens next:</strong> your upload is reviewed before any customer or assessment record is created. It is not automatically shared with an installer or another company.</div>
+    <div class="btns" style="margin-top:22px"><a class="btn btn-primary" href="book.html">Discuss My Energy Options</a><a class="btn btn-secondary" href="index.html">Return Home</a></div>
+  </div>
+  <div id="receiptError" style="display:none">
+    <div class="eyebrow">Bill upload</div>
+    <h1>I could not confirm the upload.</h1>
+    <p class="lead">Please do not resend the file yet. Call Mark on 0434 151 237 so the Website Intake queue can be checked first.</p>
+    <div class="btns" style="margin-top:22px"><a class="btn btn-primary" href="tel:+61434151237">Call Mark — 0434 151 237</a><a class="btn btn-secondary" href="upload-bill.html">Return to Bill Upload</a></div>
+  </div>
+</div></div></section>
+</main>
+<footer class="footer"><div class="container footer-small">Energy With Mark · Mark Fitzpatrick · ABN 40 893 359 837 · <a href="privacy.html">Privacy policy</a></div></footer>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const ok = params.get('ok') === '1';
+  const requestId = params.get('requestId') || '';
+
+  // The Apps Script response first loads this page inside the hidden upload
+  // iframe. Once the receipt is back on the Energy With Mark origin, promote
+  // the exact same receipt URL to the top-level window. This unloads the
+  // submitting page and its old cross-origin acknowledgement timeout.
+  if (window.top !== window.self) {
+    try {
+      const receiptUrl = location.pathname + '?ok=' + (ok ? '1' : '0') +
+        '&requestId=' + encodeURIComponent(requestId) + '&receipt=1';
+      window.parent.location.replace(receiptUrl);
+      return;
+    } catch (_) {
+      try { window.top.location.replace(location.href); return; } catch (_) {}
+    }
+  }
+
+  document.getElementById(ok ? 'receiptSuccess' : 'receiptError').style.display = 'block';
+})();
+</script>
 </body>
 </html>
