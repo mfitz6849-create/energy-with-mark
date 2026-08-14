@@ -205,3 +205,31 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(46,139,87,.2
 .footer-small { border-top:1px solid rgba(255,255,255,.12); margin-top:28px; padding-top:20px; font-size:.88rem; }
 @media (max-width: 860px){.article-layout{grid-template-columns:1fr}.article-aside{position:static;grid-template-columns:1fr 1fr}.related-grid{grid-template-columns:1fr}}
 @media (max-width: 600px){.article-aside{grid-template-columns:1fr}.article-hero{padding-top:42px}.quick-answer{padding:20px}.article-cta{padding:24px}}
+
+/* Accessibility and interaction improvements */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.tab-btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+button:disabled,
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+  transform: none;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
