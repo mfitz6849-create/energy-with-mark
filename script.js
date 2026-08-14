@@ -31,6 +31,14 @@ if (!document.querySelector('link[rel="icon"]')) {
 
 const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
+if (navLinks && !navLinks.querySelector('a[href$="community.html"]')) {
+  const communityLink = document.createElement('a');
+  communityLink.href = new URL('/community.html', window.location.origin).href;
+  communityLink.textContent = 'Community';
+  const existingSolarLink = [...navLinks.querySelectorAll('a')].find(link => (link.getAttribute('href') || '').includes('existing-solar.html'));
+  navLinks.insertBefore(communityLink, existingSolarLink || null);
+}
+
 if (navToggle && navLinks) {
   if (!navLinks.id) navLinks.id = 'primary-navigation';
   navToggle.setAttribute('aria-controls', navLinks.id);
@@ -50,6 +58,16 @@ if (navToggle && navLinks) {
     }
   });
 }
+
+// Older pages are upgraded at runtime so the public transparency link is consistent site-wide.
+document.querySelectorAll('.footer-small').forEach(footer => {
+  if (footer.querySelector('a[href*="service-relationship.html"]')) return;
+  const disclosure = document.createElement('a');
+  disclosure.href = new URL('/service-relationship.html', window.location.origin).href;
+  disclosure.textContent = 'Service & relationship disclosure';
+  footer.prepend(document.createTextNode(' · '));
+  footer.prepend(disclosure);
+});
 
 // Add structured breadcrumb data only where a visible breadcrumb trail already exists.
 function addBreadcrumbStructuredData() {
@@ -143,7 +161,7 @@ document.querySelectorAll('a[href]').forEach(link => {
       return;
     }
     if (rawHref.includes('tools.html')) {
-      sendAnalyticsEvent('calculator_open');
+      sendAnalyticsEvent('fit_checker_open');
       return;
     }
     if (rawHref.startsWith('tel:')) {
@@ -397,7 +415,7 @@ if (calcBtn) {
     document.querySelector('#checkerNextNote').textContent = nextNote;
     document.querySelector('#calcResults').style.display = 'grid';
     document.querySelector('#calcNote').style.display = 'block';
-    sendAnalyticsEvent('calculator_use');
+    sendAnalyticsEvent('fit_checker_use');
   });
 }
 
