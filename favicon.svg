@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Energy With Mark">
+  <circle cx="32" cy="32" r="30" fill="#F7F7F3"/>
+  <path d="M32 4a28 28 0 0 1 28 28H32Z" fill="#E7A928"/>
+  <path d="M60 32a28 28 0 0 1-28 28V32Z" fill="#2E8B57"/>
+  <path d="M32 60A28 28 0 0 1 4 32h28Z" fill="#17324D"/>
+  <path d="M4 32A28 28 0 0 1 32 4v28Z" fill="#17324D"/>
+  <circle cx="32" cy="32" r="13" fill="#F7F7F3"/>
+  <path d="M28 43V21h9.5v4.5h-4.4v4h4v4.3h-4V43Z" fill="#17324D"/>
+</svg>
