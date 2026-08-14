@@ -20,6 +20,15 @@ const GA_MEASUREMENT_ID = 'G-22EYYXBP2S';
 // Paste the deployed Google Apps Script /exec URL between the quotes when the private backend is ready.
 const BACKEND_URL = '';
 
+// Browser identity: one lightweight favicon for every public page without duplicating markup across the site.
+if (!document.querySelector('link[rel="icon"]')) {
+  const favicon = document.createElement('link');
+  favicon.rel = 'icon';
+  favicon.type = 'image/svg+xml';
+  favicon.href = new URL('/favicon.svg', window.location.origin).href;
+  document.head.appendChild(favicon);
+}
+
 const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
 if (navToggle && navLinks) {
@@ -197,6 +206,12 @@ if (!BACKEND_URL) {
       submitButton.textContent = 'Online Submission Being Connected';
       submitButton.setAttribute('aria-disabled', 'true');
     }
+  });
+
+  // On mobile, keep the strongest fixed CTA useful while online submission is deliberately offline.
+  document.querySelectorAll('.mobile-cta a').forEach(link => {
+    link.href = 'tel:+61434151237';
+    link.textContent = 'Call Mark — 0434 151 237';
   });
 }
 
