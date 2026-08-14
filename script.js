@@ -23,7 +23,23 @@ const BACKEND_URL = '';
 const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
 if (navToggle && navLinks) {
-  navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+  if (!navLinks.id) navLinks.id = 'primary-navigation';
+  navToggle.setAttribute('aria-controls', navLinks.id);
+  navToggle.setAttribute('aria-expanded', 'false');
+
+  const setMenuOpen = (open) => {
+    navLinks.classList.toggle('open', open);
+    navToggle.setAttribute('aria-expanded', String(open));
+  };
+
+  navToggle.addEventListener('click', () => setMenuOpen(!navLinks.classList.contains('open')));
+  navLinks.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setMenuOpen(false)));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && navLinks.classList.contains('open')) {
+      setMenuOpen(false);
+      navToggle.focus();
+    }
+  });
 }
 
 // Add structured breadcrumb data only where a visible breadcrumb trail already exists.
@@ -161,10 +177,35 @@ if (customerType && residentialFields && commercialFields) {
   toggleType();
 }
 
-// First-version submission helper. The future private Apps Script backend will store files in Drive and CRM data in Sheets.
+// Until the private backend is ready, make the public forms clearly non-live before a visitor enters information.
+if (!BACKEND_URL) {
+  try { localStorage.removeItem('markEnergyLastSubmission'); } catch (err) { /* local storage may be unavailable */ }
+
+  document.querySelectorAll('[data-backend-form]').forEach(form => {
+    if (!form.querySelector('[data-offline-form-notice]')) {
+      const notice = document.createElement('div');
+      notice.className = 'notice';
+      notice.dataset.offlineFormNotice = 'true';
+      notice.style.marginBottom = '20px';
+      notice.innerHTML = '<strong>Online submission is being connected.</strong><br>You can review the questions on this page, but the form is not accepting information yet. For now, call <a href="tel:+61434151237">0434 151 237</a> or email <a href="mailto:mark.fitzpatrick@classaenergy.com.au">mark.fitzpatrick@classaenergy.com.au</a>.';
+      form.prepend(notice);
+    }
+
+    const submitButton = form.querySelector('[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Online Submission Being Connected';
+      submitButton.setAttribute('aria-disabled', 'true');
+    }
+  });
+}
+
+// Live submission helper. The private Apps Script backend will store files in Drive and CRM data in Sheets.
 document.querySelectorAll('[data-backend-form]').forEach(form => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!BACKEND_URL) return;
+
     const submitButton = form.querySelector('[type="submit"]');
     const success = form.querySelector('.success');
     const errorBox = form.querySelector('.form-error');
@@ -189,38 +230,24 @@ document.querySelectorAll('[data-backend-form]').forEach(form => {
         files
       };
 
-      if (!BACKEND_URL) {
-        // Preview mode: save a local test copy only; nothing is sent to Mark or Google Analytics.
-        localStorage.setItem('markEnergyLastSubmission', JSON.stringify({ ...payload, files: files.map(f => ({name:f.name,mimeType:f.mimeType,category:f.category})) }));
-        if (status) status.textContent = 'Preview complete — backend connection is not configured yet.';
-        if (success) {
-          success.style.display = 'block';
-          const title = success.querySelector('h3');
-          const copy = success.querySelector('p');
-          if (title) title.textContent = 'Your form is working in preview mode.';
-          if (copy) copy.textContent = 'No customer information was transmitted. The private backend will be connected before live customer submissions are enabled.';
-          success.scrollIntoView({behavior:'smooth', block:'center'});
-        }
-      } else {
-        if (status) status.textContent = 'Sending securely to the assessment system…';
-        await fetch(BACKEND_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {'Content-Type': 'text/plain;charset=utf-8'},
-          body: JSON.stringify(payload)
-        });
-        if (status) status.textContent = 'Submission sent.';
-        form.reset();
-        if (existingSolarSection) existingSolarSection.style.display = 'none';
-        if (success) {
-          success.style.display = 'block';
-          success.scrollIntoView({behavior:'smooth', block:'center'});
-        }
-        // Record only that a website lead was submitted; no form fields are sent to Analytics.
-        sendAnalyticsEvent('generate_lead', {
-          form_type: form.dataset.formType || 'assessment'
-        });
+      if (status) status.textContent = 'Sending securely to the assessment system…';
+      await fetch(BACKEND_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload)
+      });
+      if (status) status.textContent = 'Submission sent.';
+      form.reset();
+      if (existingSolarSection) existingSolarSection.style.display = 'none';
+      if (success) {
+        success.style.display = 'block';
+        success.scrollIntoView({behavior:'smooth', block:'center'});
       }
+      // Record only that a website lead was submitted; no form fields are sent to Analytics.
+      sendAnalyticsEvent('generate_lead', {
+        form_type: form.dataset.formType || 'assessment'
+      });
     } catch (err) {
       console.error(err);
       if (status) status.textContent = '';
