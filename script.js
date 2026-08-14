@@ -323,21 +323,63 @@ function fileToBase64(file) {
   });
 }
 
-// Lightweight calculator for exploration only. It is deliberately indicative, not a proposal engine.
+// First-look fit checker. It deliberately avoids dollar savings or system sizing from incomplete inputs.
 const calcBtn = document.querySelector('#calcBtn');
 if (calcBtn) {
   calcBtn.addEventListener('click', () => {
-    const bill = Math.max(0, Number(document.querySelector('#annualBill')?.value || 0));
-    const daytime = Math.min(100, Math.max(0, Number(document.querySelector('#daytimeUse')?.value || 50)));
-    const solarSavingRate = 0.38 + (daytime/100)*0.32;
-    const solarSaving = bill * Math.min(.72, solarSavingRate);
-    const batteryExtra = bill * (daytime < 45 ? .18 : .10);
-    const grid = Math.round(bill);
-    const solar = Math.max(0, Math.round(bill - solarSaving));
-    const solarBattery = Math.max(0, Math.round(bill - solarSaving - batteryExtra));
-    document.querySelector('#gridResult').textContent = `$${grid.toLocaleString()}`;
-    document.querySelector('#solarResult').textContent = `$${solar.toLocaleString()}`;
-    document.querySelector('#batteryResult').textContent = `$${solarBattery.toLocaleString()}`;
+    const daytime = Math.min(100, Math.max(0, Number(document.querySelector('#daytimeUse')?.value || 0)));
+    const hasSolar = document.querySelector('#checkerExistingSolar')?.value === 'Yes';
+    const exports = document.querySelector('#checkerExports')?.value || 'Not sure';
+    const laterUse = document.querySelector('#checkerLaterUse')?.value || 'Not sure';
+
+    let solarFit = 'Needs Review';
+    let solarNote = 'Your load profile needs a closer look before judging solar fit.';
+    if (daytime >= 60) {
+      solarFit = 'Strong Fit';
+      solarNote = 'A high share of daytime use can create a good opportunity to use solar directly.';
+    } else if (daytime >= 35) {
+      solarFit = 'Worth Checking';
+      solarNote = 'There is useful daytime demand, but the bill and load profile should guide system size.';
+    } else if (daytime > 0) {
+      solarFit = 'Needs Careful Sizing';
+      solarNote = 'Lower daytime use can mean more exports, so system size and future loads matter more.';
+    }
+
+    let batteryFit = 'Needs More Info';
+    let batteryNote = 'Exports and later grid use are the main starting points for a battery assessment.';
+    if (!hasSolar) {
+      batteryFit = 'Assess Solar First';
+      batteryNote = 'Without existing solar, I would normally assess the solar design and future surplus before judging storage.';
+    } else if (exports === 'Yes' && laterUse === 'Yes') {
+      batteryFit = 'Worth Investigating';
+      batteryNote = 'Useful solar exports plus later grid purchases create a clear reason to model storage.';
+    } else if (exports === 'No' && laterUse === 'Yes') {
+      batteryFit = 'Check Solar Supply';
+      batteryNote = 'Later grid use exists, but there may not be enough excess solar to charge a battery regularly.';
+    } else if (exports === 'Yes' && laterUse === 'No') {
+      batteryFit = 'Lower Priority';
+      batteryNote = 'You may have solar available to store, but limited later grid use can reduce the everyday saving opportunity.';
+    } else if (exports === 'No' && laterUse === 'No') {
+      batteryFit = 'Lower Priority';
+      batteryNote = 'Low exports and low later grid use give a battery less obvious work to do for bill savings.';
+    }
+
+    let nextStep = 'Review a Bill';
+    let nextNote = 'A recent electricity bill helps confirm usage, tariff and exports.';
+    if (exports === 'Not sure' || laterUse === 'Not sure') {
+      nextStep = 'Check the Data';
+      nextNote = 'A bill or interval data can answer the questions that are still uncertain.';
+    } else if (hasSolar) {
+      nextStep = 'Review Existing Solar';
+      nextNote = 'Confirm system size, inverter, exports and later grid use before adding equipment.';
+    }
+
+    document.querySelector('#solarFit').textContent = solarFit;
+    document.querySelector('#solarFitNote').textContent = solarNote;
+    document.querySelector('#batteryFit').textContent = batteryFit;
+    document.querySelector('#batteryFitNote').textContent = batteryNote;
+    document.querySelector('#checkerNextStep').textContent = nextStep;
+    document.querySelector('#checkerNextNote').textContent = nextNote;
     document.querySelector('#calcResults').style.display = 'grid';
     document.querySelector('#calcNote').style.display = 'block';
     sendAnalyticsEvent('calculator_use');
