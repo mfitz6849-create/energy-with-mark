@@ -26,6 +26,71 @@ if (navToggle && navLinks) {
   navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
 }
 
+// Add structured breadcrumb data only where a visible breadcrumb trail already exists.
+function addBreadcrumbStructuredData() {
+  const breadcrumbNav = document.querySelector('nav.breadcrumbs');
+  if (!breadcrumbNav) return;
+
+  const itemListElement = [...breadcrumbNav.querySelectorAll('a[href]')].map((link, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: (link.textContent || '').trim(),
+    item: new URL(link.getAttribute('href'), window.location.href).href
+  }));
+
+  const currentName = [...breadcrumbNav.querySelectorAll('span')]
+    .map(span => (span.textContent || '').trim())
+    .filter(text => text && text !== '›')
+    .pop();
+
+  if (currentName) {
+    itemListElement.push({
+      '@type': 'ListItem',
+      position: itemListElement.length + 1,
+      name: currentName,
+      item: window.location.href.split('#')[0]
+    });
+  }
+
+  if (itemListElement.length < 2) return;
+
+  const schema = document.createElement('script');
+  schema.type = 'application/ld+json';
+  schema.dataset.generatedBreadcrumb = 'true';
+  schema.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement
+  });
+  document.head.appendChild(schema);
+}
+
+// Ensure every Article schema points back to the canonical page, including the newer guides.
+function enhanceArticleStructuredData() {
+  const canonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href.split('#')[0];
+  document.querySelectorAll('script[type="application/ld+json"]').forEach(schema => {
+    try {
+      const data = JSON.parse(schema.textContent || '{}');
+      const nodes = Array.isArray(data['@graph']) ? data['@graph'] : [data];
+      let changed = false;
+
+      nodes.forEach(node => {
+        if (node && node['@type'] === 'Article' && !node.mainEntityOfPage) {
+          node.mainEntityOfPage = { '@type': 'WebPage', '@id': canonical };
+          changed = true;
+        }
+      });
+
+      if (changed) schema.textContent = JSON.stringify(data);
+    } catch (err) {
+      // Ignore non-JSON or unrelated structured-data blocks rather than affecting the page.
+    }
+  });
+}
+
+addBreadcrumbStructuredData();
+enhanceArticleStructuredData();
+
 function sendAnalyticsEvent(name, params = {}) {
   if (typeof window.gtag !== 'function') return;
   window.gtag('event', name, {
@@ -64,8 +129,11 @@ document.querySelectorAll('a[href]').forEach(link => {
       sendAnalyticsEvent('contact_click', { contact_type: 'email' });
       return;
     }
-    if (rawHref.includes('articles/')) {
-      sendAnalyticsEvent('article_open', { article_path: rawHref.split('?')[0] });
+
+    const isArticleLink = rawHref.includes('articles/') || link.classList.contains('related-card') || Boolean(link.closest('.related-section'));
+    if (isArticleLink && rawHref.endsWith('.html')) {
+      const articleUrl = new URL(rawHref, window.location.href);
+      sendAnalyticsEvent('article_open', { article_path: articleUrl.pathname });
     }
   });
 });
