@@ -19,8 +19,8 @@
 <header class="header"><div class="container nav"><a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>MARK FITZPATRICK · RENEWABLE ENERGY SPECIALIST</span></span></a><button aria-label="Open menu" class="nav-toggle">☰</button><nav class="nav-links"><a href="business.html">Business</a><a href="home.html">Home</a><a href="existing-solar.html">Existing Solar</a><a href="learn.html">Learn</a><a href="tools.html">Tools</a><a href="how-i-help.html">How I Help</a></nav><a class="btn btn-primary" href="assessment.html">Start Assessment</a></div></header>
 <main>
 <section class="page-hero"><div class="container"><div class="eyebrow">Energy discussion</div><h1>Talk Through Your Energy Options</h1><p class="lead">We can discuss your current energy costs, existing solar if applicable, what you want to achieve and what information may be needed before I prepare a recommendation.</p><div class="btns"><a class="btn btn-primary" href="tel:+61434151237">Call Mark — 0434 151 237</a><a class="btn btn-secondary" href="mailto:mark.fitzpatrick@classaenergy.com.au?subject=Energy%20With%20Mark%20Enquiry">Email Mark</a></div></div></section>
-<section class="section-sm"><div class="container grid-2"><div class="card"><h2>Contact me now</h2><p>The online booking request is being connected. For now, the quickest option is to call or email me directly.</p><p><strong>Phone</strong><br/><a href="tel:+61434151237">0434 151 237</a></p><p><strong>Email</strong><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au?subject=Energy%20With%20Mark%20Enquiry">mark.fitzpatrick@classaenergy.com.au</a></p><div class="callout"><strong>You do not need everything ready first.</strong><br/>If a bill, inverter photo or other information would make the discussion more useful, I can tell you what is needed.</div></div>
-<form class="form-card" data-backend-form="" data-form-type="booking"><h2>Online booking request</h2><p>This form is prepared for the private booking system and will become available after the final connection check passes.</p><input name="privacyNoticeVersion" type="hidden" value="2026-08-14-v1"/><div aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden"><label>Leave this field blank<input autocomplete="off" name="website" tabindex="-1" type="text"/></label></div><div class="form-grid">
+<section class="section-sm"><div class="container grid-2"><div class="card"><h2>Contact me now</h2><p>You can request a preferred discussion time online, or call or email me directly.</p><p><strong>Phone</strong><br/><a href="tel:+61434151237">0434 151 237</a></p><p><strong>Email</strong><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au?subject=Energy%20With%20Mark%20Enquiry">mark.fitzpatrick@classaenergy.com.au</a></p><div class="callout"><strong>You do not need everything ready first.</strong><br/>If a bill, inverter photo or other information would make the discussion more useful, I can tell you what is needed.</div></div>
+<form class="form-card" data-backend-form="" data-form-type="booking"><h2>Online booking request</h2><p>Choose a preferred date and time. This is a request only — I will confirm the appointment with you after I review it.</p><input name="privacyNoticeVersion" type="hidden" value="2026-08-14-v1"/><div aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden"><label>Leave this field blank<input autocomplete="off" name="website" tabindex="-1" type="text"/></label></div><div class="form-grid">
 <div class="field"><label>Name</label><input autocomplete="name" name="name" required=""/></div>
 <div class="field"><label>Phone</label><input autocomplete="tel" name="phone" required="" type="tel"/></div>
 <div class="field"><label>Email</label><input autocomplete="email" name="email" required="" type="email"/></div>
@@ -35,5 +35,153 @@
 <footer class="footer"><div class="container footer-grid"><div><h3>Energy With Mark</h3><p>Mark Fitzpatrick · Renewable Energy Specialist</p><p>ABN 40 893 359 837</p><p><a href="tel:+61434151237">0434 151 237</a><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au">mark.fitzpatrick@classaenergy.com.au</a></p></div><div><h3>Explore</h3><p><a href="business.html">For Businesses</a><br/><a href="home.html">For Homeowners</a><br/><a href="existing-solar.html">Existing Solar</a><br/><a href="learn.html">Knowledge Hub</a></p></div><div><h3>Start</h3><p><a href="assessment.html">Energy Assessment</a><br/><a href="upload-bill.html">Bill Review</a><br/><a href="tools.html">Fit Checker</a><br/><a href="book.html">Contact Mark</a></p></div></div><div class="container footer-small"><a href="service-relationship.html">Service &amp; relationship disclosure</a> · <a href="editorial-policy.html">Editorial &amp; advice approach</a> · <a href="privacy.html">Privacy policy</a></div></footer>
 <div class="mobile-cta"><a class="btn btn-primary" href="assessment.html">Start Assessment</a></div>
 <script src="script.js"></script>
+
+<script>
+(() => {
+  const BOOKING_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
+  const form = document.querySelector('form[data-form-type="booking"]');
+  if (!form) return;
+
+  form.querySelector('[data-offline-form-notice]')?.remove();
+  const submitButton = form.querySelector('[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.removeAttribute('aria-disabled');
+    submitButton.textContent = 'Request This Time';
+  }
+
+  const makeRequestId = () => {
+    const random = (window.crypto && crypto.getRandomValues)
+      ? Array.from(crypto.getRandomValues(new Uint32Array(2))).map(n => n.toString(36)).join('')
+      : Math.random().toString(36).slice(2, 14);
+    return `ewm-${Date.now().toString(36)}-${random}`.slice(0, 80);
+  };
+
+  const getField = name => form.elements[name]?.value || '';
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+
+    const success = form.querySelector('.success');
+    const errorBox = form.querySelector('.form-error');
+    const status = form.querySelector('.submit-status');
+    if (success) success.style.display = 'none';
+    if (errorBox) errorBox.style.display = 'none';
+    if (submitButton) submitButton.disabled = true;
+
+    const requestId = makeRequestId();
+    const params = new URLSearchParams(window.location.search);
+    const payload = {
+      type: 'booking',
+      source: 'Energy With Mark Website',
+      submittedAt: new Date().toISOString(),
+      fields: {
+        name: getField('name'),
+        phone: getField('phone'),
+        email: getField('email'),
+        customerType: getField('customerType'),
+        preferredDate: getField('preferredDate'),
+        preferredTime: getField('preferredTime'),
+        helpWith: getField('helpWith'),
+        notes: getField('notes'),
+        website: getField('website'),
+        privacyNoticeVersion: getField('privacyNoticeVersion'),
+        privacyAcknowledged: Boolean(form.elements.privacyAcknowledged?.checked),
+        landingPage: '/book.html',
+        pageUrl: window.location.href,
+        referrer: document.referrer || '',
+        utmSource: params.get('utm_source') || '',
+        utmMedium: params.get('utm_medium') || '',
+        utmCampaign: params.get('utm_campaign') || '',
+        clientRequestId: requestId
+      },
+      files: []
+    };
+
+    const iframe = document.createElement('iframe');
+    iframe.name = `ewmBookingAck_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    iframe.title = 'Booking receipt acknowledgement';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.tabIndex = -1;
+    iframe.style.cssText = 'position:absolute;width:1px;height:1px;border:0;left:-10000px;top:auto;overflow:hidden;';
+    document.body.appendChild(iframe);
+
+    const transport = document.createElement('form');
+    transport.method = 'POST';
+    transport.action = BOOKING_ENDPOINT;
+    transport.target = iframe.name;
+    transport.style.display = 'none';
+
+    const addHidden = (name, value) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      transport.appendChild(input);
+    };
+    addHidden('responseMode', 'iframe');
+    addHidden('parentOrigin', window.location.origin);
+    addHidden('payload', JSON.stringify(payload));
+    document.body.appendChild(transport);
+
+    let finished = false;
+    const cleanup = () => {
+      window.removeEventListener('message', onMessage);
+      transport.remove();
+      iframe.remove();
+      clearTimeout(timer);
+    };
+
+    const finishError = message => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      if (status) status.textContent = '';
+      if (errorBox) {
+        errorBox.textContent = message;
+        errorBox.style.display = 'block';
+        errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      // Leave the button disabled after an uncertain send so a visitor does not create a duplicate.
+    };
+
+    const onMessage = event => {
+      const googleOrigin = event.origin === 'https://script.google.com' || event.origin.endsWith('.googleusercontent.com');
+      if (!googleOrigin) return;
+      const message = event.data;
+      if (!message || message.source !== 'energy-with-mark-booking-submit' || !message.payload) return;
+      const result = message.payload;
+      if (result.requestId !== requestId) return;
+
+      if (!result.ok) {
+        finishError('Your booking request could not be accepted. Please call Mark on 0434 151 237 or email mark.fitzpatrick@classaenergy.com.au.');
+        return;
+      }
+
+      if (finished) return;
+      finished = true;
+      cleanup();
+      if (status) status.textContent = 'Booking request received.';
+      form.reset();
+      if (success) {
+        success.style.display = 'block';
+        success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (submitButton) submitButton.disabled = false;
+      if (typeof sendAnalyticsEvent === 'function') sendAnalyticsEvent('generate_lead', { form_type: 'booking' });
+    };
+
+    window.addEventListener('message', onMessage);
+    const timer = setTimeout(() => {
+      finishError('Your request was sent, but I could not confirm the receipt on this page. Please do not submit it again. Call Mark on 0434 151 237 so I can check it for you.');
+    }, 15000);
+
+    if (status) status.textContent = 'Sending your booking request…';
+    transport.submit();
+    if (status) status.textContent = 'Waiting for the booking system to acknowledge receipt…';
+  });
+})();
+</script>
 
 </body></html>
