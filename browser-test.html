@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Controlled CRM Browser Test | Energy With Mark</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f7f7f3;color:#17324d;margin:0;padding:40px 20px}
+    .card{max-width:680px;margin:auto;background:#fff;border:1px solid #d8dee4;border-radius:18px;padding:30px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+    h1{margin-top:0}.notice{background:#fff6dd;border-left:5px solid #e7a928;padding:16px;margin:18px 0;border-radius:8px}
+    .dummy{background:#f1f6f3;padding:16px;border-radius:10px;line-height:1.7}
+    button{background:#2e8b57;color:white;border:0;border-radius:10px;padding:14px 20px;font-weight:700;font-size:16px;cursor:pointer}
+    button:disabled{opacity:.55;cursor:not-allowed}.status{margin-top:18px;font-weight:700}.small{font-size:14px;color:#4d5f70}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Energy With Mark — controlled browser test</h1>
+    <div class="notice"><strong>Dummy data only.</strong> This page is not linked from the public site and is blocked from search indexing. It cannot submit real customer details.</div>
+    <p>This test sends one fixed booking request from a normal browser to the private CRM endpoint.</p>
+    <div class="dummy">
+      <strong>Name:</strong> EWM Browser Test<br>
+      <strong>Phone:</strong> 0400 000 888<br>
+      <strong>Email:</strong> browser.test@energywithmark.example<br>
+      <strong>Request:</strong> Battery<br>
+      <strong>Privacy notice:</strong> 2026-08-14-v1 acknowledged<br>
+      <strong>Files:</strong> none
+    </div>
+    <p><button id="sendTest">Send Dummy Browser Test</button></p>
+    <div id="status" class="status"></div>
+    <p class="small">After sending, check the Website Intake tab in Energy With Mark - Master CRM. A new SUB record should appear as Pending Review.</p>
+  </main>
+  <script>
+    const ENDPOINT='https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
+    const button=document.getElementById('sendTest');
+    const status=document.getElementById('status');
+    button.addEventListener('click',async()=>{
+      button.disabled=true;
+      status.textContent='Sending fixed dummy data…';
+      const payload={
+        type:'booking',
+        source:'Energy With Mark Controlled Browser Test',
+        submittedAt:new Date().toISOString(),
+        fields:{
+          name:'EWM Browser Test',
+          phone:'0400 000 888',
+          email:'browser.test@energywithmark.example',
+          postcode:'',
+          customerType:'Homeowner',
+          helpWith:'Battery',
+          existingSolar:'',
+          billAmount:'',
+          preferredDate:'2026-08-20',
+          preferredTime:'10:00',
+          notes:'DUMMY CONTROLLED BROWSER TEST — NO REAL CUSTOMER DATA',
+          landingPage:'/browser-test.html',
+          utmSource:'controlled-browser-test',
+          utmMedium:'internal',
+          utmCampaign:'phase3-2',
+          website:'',
+          privacyAcknowledged:true,
+          privacyNoticeVersion:'2026-08-14-v1',
+          browserTest:true
+        },
+        files:[]
+      };
+      try{
+        await fetch(ENDPOINT,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+        status.textContent='Dummy request sent. Now check Website Intake in the CRM.';
+      }catch(err){
+        status.textContent='The browser could not send the test. Do not retry yet; return to ChatGPT.';
+        button.disabled=false;
+      }
+    });
+  </script>
+</body>
+</html>
