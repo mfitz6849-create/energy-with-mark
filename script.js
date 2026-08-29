@@ -119,6 +119,18 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
 
 (function addPersonalBrandPortraits() {
   if (currentPage === 'index.html') {
+    const heroCopy = document.querySelector('.quick-hero-grid > div:first-child');
+    if (heroCopy && !heroCopy.querySelector('.hero-personal-cue')) {
+      const cue = document.createElement('div');
+      cue.className = 'hero-personal-cue';
+      cue.appendChild(createPortrait('primary', 'compact'));
+      const copy = document.createElement('div');
+      copy.innerHTML = '<strong>Hi, I’m Mark.</strong><span>I help people work out whether solar or a battery makes sense.</span><b>My advice is free.</b>';
+      cue.appendChild(copy);
+      const trust = heroCopy.querySelector('.quick-trust');
+      if (trust) trust.insertAdjacentElement('afterend', cue); else heroCopy.appendChild(cue);
+    }
+
     const note = document.querySelector('.mark-note');
     if (note && !note.querySelector('[data-mark-portrait]')) {
       const person = document.createElement('div');
