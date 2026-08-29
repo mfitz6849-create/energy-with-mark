@@ -149,6 +149,9 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
   }
 
   if (currentPage === 'calculator.html') {
+    const sideHelpCopy = document.querySelector('.side-help p');
+    if (sideHelpCopy) sideHelpCopy.textContent = 'Choose the answer that feels closest. This is a first estimate, not a full assessment or final quote.';
+
     const leadPanel = document.querySelector('.lead-panel');
     if (leadPanel && !leadPanel.querySelector('[data-mark-trust-row]')) {
       leadPanel.prepend(createTrustRow('primary', 'Want a real person to check the result?', 'My review and advice are free. I can check your bill and explain what may make sense in plain English.'));
