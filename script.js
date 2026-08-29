@@ -189,6 +189,14 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
     person.appendChild(copy);
     footerFirst.appendChild(person);
   }
+
+  if (footerFirst && !footerFirst.querySelector('[data-footer-social]')) {
+    const social = document.createElement('p');
+    social.dataset.footerSocial = 'true';
+    social.style.marginTop = '18px';
+    social.innerHTML = '<strong>Follow Energy With Mark</strong><br><a href="https://www.instagram.com/mark.fitzpatrick2026/" target="_blank" rel="noopener noreferrer">Instagram ↗</a> · <a href="https://www.facebook.com/profile.php?id=61592092305366" target="_blank" rel="noopener noreferrer">Facebook ↗</a>';
+    footerFirst.appendChild(social);
+  }
 })();
 
 // Keep the new transparency pages easy to find from older public pages too.
@@ -225,6 +233,10 @@ document.querySelectorAll('a[href]').forEach(link => {
       sendAnalyticsEvent('contact_click', { contact_type: 'phone' });
     } else if (href.startsWith('mailto:')) {
       sendAnalyticsEvent('contact_click', { contact_type: 'email' });
+    } else if (href.includes('instagram.com')) {
+      sendAnalyticsEvent('social_click', { platform: 'instagram' });
+    } else if (href.includes('facebook.com')) {
+      sendAnalyticsEvent('social_click', { platform: 'facebook' });
     } else if (href.includes('articles/')) {
       sendAnalyticsEvent('article_open', { article_path: new URL(href, window.location.href).pathname });
     }
