@@ -1,5 +1,6 @@
 // Energy With Mark — simple public website runtime
 const GA_MEASUREMENT_ID = 'G-22EYYXBP2S';
+const siteUrl = path => new URL(`/${String(path).replace(/^\/+/, '')}`, window.location.origin).href;
 
 (function initialiseAnalytics() {
   window.dataLayer = window.dataLayer || [];
@@ -19,19 +20,19 @@ const GA_MEASUREMENT_ID = 'G-22EYYXBP2S';
 if (!document.querySelector('link[href$="homepage-v2.css"]')) {
   const brandStyles = document.createElement('link');
   brandStyles.rel = 'stylesheet';
-  brandStyles.href = new URL('/homepage-v2.css', window.location.origin).href;
+  brandStyles.href = siteUrl('homepage-v2.css');
   document.head.appendChild(brandStyles);
 }
 if (!document.querySelector('link[href$="personal-brand.css"]')) {
   const portraitStyles = document.createElement('link');
   portraitStyles.rel = 'stylesheet';
-  portraitStyles.href = new URL('/personal-brand.css', window.location.origin).href;
+  portraitStyles.href = siteUrl('personal-brand.css');
   document.head.appendChild(portraitStyles);
 }
 if (!document.querySelector('link[href$="conversion-v1.css"]')) {
   const conversionStyles = document.createElement('link');
   conversionStyles.rel = 'stylesheet';
-  conversionStyles.href = new URL('/conversion-v1.css', window.location.origin).href;
+  conversionStyles.href = siteUrl('conversion-v1.css');
   document.head.appendChild(conversionStyles);
 }
 document.body.classList.add('public-v2');
@@ -40,25 +41,46 @@ if (!document.querySelector('link[rel="icon"]')) {
   const favicon = document.createElement('link');
   favicon.rel = 'icon';
   favicon.type = 'image/svg+xml';
-  favicon.href = new URL('/favicon.svg', window.location.origin).href;
+  favicon.href = siteUrl('favicon.svg');
   document.head.appendChild(favicon);
 }
+
+// Correct retired and nested paths immediately, before nav and analytics are attached.
+document.querySelectorAll('a[href]').forEach(link => {
+  let url;
+  try { url = new URL(link.getAttribute('href') || '', window.location.href); } catch (_) { return; }
+  const pathname = url.pathname;
+  if (pathname.endsWith('/tools.html') || pathname === '/articles/calculator.html') {
+    link.href = siteUrl('calculator.html');
+  } else if (pathname.endsWith('/assessment.html')) {
+    link.href = siteUrl('upload-bill.html');
+  } else if (pathname === '/articles/community.html') {
+    link.href = siteUrl('community.html');
+  } else if (pathname === '/articles/how-i-get-paid.html') {
+    link.href = siteUrl('how-i-get-paid.html');
+  } else if (pathname === '/articles/who-i-work-with.html') {
+    link.href = siteUrl('who-i-work-with.html');
+  }
+});
 
 const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
 
 if (navLinks) {
   navLinks.querySelectorAll('a').forEach(link => {
-    const href = link.getAttribute('href') || '';
-    if (href.includes('tools.html')) {
-      link.href = 'calculator.html';
-      link.textContent = 'Calculator';
+    let path = '';
+    try { path = new URL(link.href, window.location.href).pathname; } catch (_) {}
+    if (path.endsWith('/calculator.html')) {
+      link.href = siteUrl('calculator.html');
+      link.textContent = 'Full Calculator';
     }
   });
 
-  if (!navLinks.querySelector('a[href$="community.html"]')) {
+  if (![...navLinks.querySelectorAll('a[href]')].some(link => {
+    try { return new URL(link.href, window.location.href).pathname === '/community.html'; } catch (_) { return false; }
+  })) {
     const link = document.createElement('a');
-    link.href = 'community.html';
+    link.href = siteUrl('community.html');
     link.textContent = 'Clubs & Community';
     navLinks.appendChild(link);
   }
@@ -85,7 +107,7 @@ if (navToggle && navLinks) {
 // Personal-brand portraits. The preferred three-quarter portrait is primary;
 // the straight-on portrait is the supporting variation.
 const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || 'index.html';
-const portraitUrl = variant => new URL(`/assets/mark-fitzpatrick-${variant}.svg`, window.location.origin).href;
+const portraitUrl = variant => siteUrl(`assets/mark-fitzpatrick-${variant}.svg`);
 
 function createPortrait(variant = 'primary', shellClass = '') {
   const shell = document.createElement('div');
@@ -183,8 +205,6 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
     }
   }
 
-  // A small personal-brand cue in the footer makes older guide pages feel connected
-  // to the same real person without overwhelming their educational content.
   const footerFirst = document.querySelector('.footer .footer-grid > div:first-child');
   if (footerFirst && !footerFirst.querySelector('.footer-person')) {
     const person = document.createElement('div');
@@ -196,8 +216,9 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
     footerFirst.appendChild(person);
   }
 
+  // Fallback markup; conversion-v1.js upgrades this to the richer chip layout.
   if (footerFirst && !footerFirst.querySelector('[data-footer-social]')) {
-    const social = document.createElement('p');
+    const social = document.createElement('div');
     social.dataset.footerSocial = 'true';
     social.style.marginTop = '18px';
     social.innerHTML = '<strong>Follow Energy With Mark</strong><br><a href="https://www.instagram.com/mark.fitzpatrick2026/" target="_blank" rel="noopener noreferrer">Instagram ↗</a> · <a href="https://www.facebook.com/profile.php?id=61592092305366" target="_blank" rel="noopener noreferrer">Facebook ↗</a> · <a href="https://www.youtube.com/@EnergywithMark" target="_blank" rel="noopener noreferrer">YouTube ↗</a> · <a href="https://www.linkedin.com/in/mark-fitzpatrick-b9378017b/" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a> · <a href="https://www.tiktok.com/@markfitzpatrickenergy" target="_blank" rel="noopener noreferrer">TikTok ↗</a> · <a href="https://markfitzpatrickenergy.substack.com/" target="_blank" rel="noopener noreferrer">Substack ↗</a>';
@@ -205,13 +226,18 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
   }
 })();
 
-// Keep the new transparency pages easy to find from older public pages too.
+// Keep transparency pages easy to find, using root-safe URLs even on nested articles.
 document.querySelectorAll('.footer-small').forEach(footer => {
-  const addFooterLink = (href, text) => {
-    if (footer.querySelector(`a[href$="${href}"]`)) return;
+  const addFooterLink = (path, text) => {
+    const target = siteUrl(path);
+    const targetPath = new URL(target).pathname;
+    const exists = [...footer.querySelectorAll('a[href]')].some(link => {
+      try { return new URL(link.href, window.location.href).pathname === targetPath; } catch (_) { return false; }
+    });
+    if (exists) return;
     if ((footer.textContent || '').trim()) footer.appendChild(document.createTextNode(' · '));
     const link = document.createElement('a');
-    link.href = href;
+    link.href = target;
     link.textContent = text;
     footer.appendChild(link);
   };
@@ -233,8 +259,6 @@ document.querySelectorAll('a[href]').forEach(link => {
       sendAnalyticsEvent('bill_upload_start');
     } else if (href.includes('book.html')) {
       sendAnalyticsEvent('booking_start');
-    } else if (href.includes('assessment.html')) {
-      sendAnalyticsEvent('assessment_start');
     } else if (href.startsWith('tel:')) {
       sendAnalyticsEvent('contact_click', { contact_type: 'phone' });
     } else if (href.startsWith('mailto:')) {
@@ -278,7 +302,7 @@ if (breadcrumbNav) {
 // Load the site-wide conversion, consistency and profile layer after the core runtime.
 if (!document.querySelector('script[src$="conversion-v1.js"]')) {
   const conversionScript = document.createElement('script');
-  conversionScript.src = new URL('/conversion-v1.js', window.location.origin).href;
+  conversionScript.src = siteUrl('conversion-v1.js');
   conversionScript.defer = true;
   document.body.appendChild(conversionScript);
 }
