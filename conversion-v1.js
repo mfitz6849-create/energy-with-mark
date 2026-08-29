@@ -28,6 +28,7 @@
   ensureMeta('og:title', document.title);
   ensureMeta('og:description', description);
   ensureMeta('og:url', canonical);
+  ensureMeta('og:image', 'https://energywithmark.com.au/assets/mark-fitzpatrick-primary.svg');
   ensureMeta('twitter:card', 'summary', 'name');
   ensureMeta('twitter:title', document.title, 'name');
   ensureMeta('twitter:description', description, 'name');
@@ -96,6 +97,11 @@
       social = document.createElement('div');
       social.dataset.footerSocial = 'true';
       footerFirst.appendChild(social);
+    } else if (social.tagName === 'P') {
+      const replacement = document.createElement('div');
+      replacement.dataset.footerSocial = 'true';
+      social.replaceWith(replacement);
+      social = replacement;
     }
     social.className = 'footer-social';
     social.innerHTML = `<strong>Follow Energy With Mark</strong><div class="social-chip-row">${socialProfiles.map(([label,mark,url]) => `<a class="social-chip" href="${url}" target="_blank" rel="noopener noreferrer" aria-label="Energy With Mark on ${label}"><span class="social-mark">${mark}</span><span>${label}</span></a>`).join('')}</div>`;
