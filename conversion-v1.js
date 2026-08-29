@@ -2,6 +2,7 @@
   'use strict';
 
   const page = window.location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+  const rootUrl = path => new URL(`/${String(path).replace(/^\/+/, '')}`, window.location.origin).href;
   const socialProfiles = [
     ['Instagram','IG','https://www.instagram.com/mark.fitzpatrick2026/'],
     ['Facebook','f','https://www.facebook.com/profile.php?id=61592092305366'],
@@ -23,15 +24,18 @@
 
   const canonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href.split('#')[0];
   const description = document.querySelector('meta[name="description"]')?.content || 'Plain-English solar, battery and energy advice from Mark Fitzpatrick.';
+  const profileImage = rootUrl('assets/mark-fitzpatrick-primary.svg');
   ensureMeta('og:site_name', 'Energy With Mark');
-  ensureMeta('og:type', 'website');
+  ensureMeta('og:type', document.querySelector('meta[property="og:type"]')?.content || 'website');
   ensureMeta('og:title', document.title);
   ensureMeta('og:description', description);
   ensureMeta('og:url', canonical);
-  ensureMeta('og:image', 'https://energywithmark.com.au/assets/mark-fitzpatrick-primary.svg');
+  ensureMeta('og:image', profileImage);
+  ensureMeta('og:image:alt', 'Mark Fitzpatrick — Energy With Mark');
   ensureMeta('twitter:card', 'summary', 'name');
   ensureMeta('twitter:title', document.title, 'name');
   ensureMeta('twitter:description', description, 'name');
+  ensureMeta('twitter:image', profileImage, 'name');
 
   if (!document.querySelector('script[data-mark-person-schema]')) {
     const schema = document.createElement('script');
@@ -43,7 +47,7 @@
       name:'Mark Fitzpatrick',
       jobTitle:'Renewable Energy Specialist',
       url:'https://energywithmark.com.au/',
-      image:'https://energywithmark.com.au/assets/mark-fitzpatrick-primary.svg',
+      image:profileImage,
       email:'mark.fitzpatrick@classaenergy.com.au',
       telephone:'+61434151237',
       sameAs:socialProfiles.map(([, , url]) => url),
@@ -52,17 +56,67 @@
     document.head.appendChild(schema);
   }
 
+  // Retire old customer paths everywhere, including older article templates.
+  document.querySelectorAll('a[href]').forEach(link => {
+    let url;
+    try { url = new URL(link.getAttribute('href') || '', window.location.href); } catch (_) { return; }
+    const pathname = url.pathname;
+    if (pathname.endsWith('/tools.html') || pathname === '/articles/calculator.html') {
+      link.href = rootUrl('calculator.html');
+    } else if (pathname.endsWith('/assessment.html')) {
+      link.href = rootUrl('upload-bill.html');
+    } else if (pathname === '/articles/community.html') {
+      link.href = rootUrl('community.html');
+    } else if (pathname === '/articles/how-i-get-paid.html') {
+      link.href = rootUrl('how-i-get-paid.html');
+    } else if (pathname === '/articles/who-i-work-with.html') {
+      link.href = rootUrl('who-i-work-with.html');
+    }
+  });
+
   const exactReplacements = new Map([
     ['Free Bill Review','Free Full Energy Assessment'],
     ['Bill Review','Free Full Energy Assessment'],
     ['Solar Calculator','Full Calculator'],
     ['Try Calculator','Full Calculator'],
     ['Start Assessment','Free Full Energy Assessment'],
-    ['Book a Discussion','Book a Call']
+    ['Energy Assessment','Free Full Energy Assessment'],
+    ['Have My Energy Use Assessed','Get Free Full Energy Assessment'],
+    ['Upload My Electricity Bill','Get Free Full Energy Assessment'],
+    ['Send My Power Bill','Get Free Full Energy Assessment'],
+    ['Book a Discussion','Book a Call'],
+    ['Ask for a Call','Book a Call']
   ]);
-  document.querySelectorAll('a,button').forEach((el) => {
+  document.querySelectorAll('a,button').forEach(el => {
     const text = (el.textContent || '').trim();
     if (exactReplacements.has(text)) el.textContent = exactReplacements.get(text);
+  });
+
+  // Older article CTAs often had two routes that now point to the same place.
+  document.querySelectorAll('.article-cta .btns').forEach(group => {
+    const links = [...group.querySelectorAll('a[href]')];
+    if (!links.length) return;
+    links[0].href = rootUrl('upload-bill.html');
+    links[0].textContent = 'Get Free Full Energy Assessment';
+    if (links[1]) {
+      links[1].href = rootUrl('calculator.html');
+      links[1].textContent = 'Use Full Calculator';
+    }
+  });
+
+  // Remove duplicate destinations from older footer link groups after legacy rewrites.
+  document.querySelectorAll('.footer p').forEach(group => {
+    const seen = new Set();
+    [...group.querySelectorAll('a[href]')].forEach(link => {
+      let key;
+      try { key = new URL(link.href, window.location.href).pathname; } catch (_) { return; }
+      if (!seen.has(key)) { seen.add(key); return; }
+      const next = link.nextSibling;
+      const prev = link.previousSibling;
+      if (next && next.nodeName === 'BR') next.remove();
+      else if (prev && prev.nodeName === 'BR') prev.remove();
+      link.remove();
+    });
   });
 
   if (page === 'calculator.html') {
@@ -70,7 +124,7 @@
     if (sideHelp) sideHelp.textContent = 'Choose the answer that feels closest. This is a first estimate, not a full assessment or final quote.';
     const warning = document.querySelector('.plain-warning strong');
     if (warning) warning.textContent = 'This is a first estimate, not a full assessment or final quote.';
-    document.querySelectorAll('.result-actions a[href$="upload-bill.html"]').forEach((link) => { link.textContent = 'Get Free Full Energy Assessment'; });
+    document.querySelectorAll('.result-actions a[href$="upload-bill.html"]').forEach(link => { link.textContent = 'Get Free Full Energy Assessment'; });
     const calcButton = document.getElementById('calculateFull');
     if (calcButton) calcButton.addEventListener('click', () => setTimeout(() => {
       if (document.querySelector('.calc-step[data-step="4"].active')) {
@@ -116,7 +170,7 @@
 
     const preview = document.createElement('section');
     preview.className = 'assessment-preview-section';
-    preview.innerHTML = `<div class="container assessment-preview"><div><span class="preview-badge">Example assessment</span><h2>What a full energy assessment can tell you.</h2><p>This is the kind of plain-English answer I aim to give after reviewing your real bill. The exact result depends on your property and energy use.</p><a class="btn btn-primary" href="upload-bill.html">Upload My Bill for Free Assessment</a></div><div class="preview-report"><div><span>Current position</span><strong>What you use and what you pay</strong><small>Bill amount, usage, tariff and any solar credits shown.</small></div><div><span>What I found</span><strong>The main opportunity or problem</strong><small>Solar, battery, existing-system review or sometimes no change.</small></div><div><span>Options considered</span><strong>What is worth comparing</strong><small>Simple options with the assumptions and missing information made clear.</small></div><div><span>Next step</span><strong>What I would check next</strong><small>You can stop there, send more information, or book a call to talk it through.</small></div></div></div>`;
+    preview.innerHTML = `<div class="container assessment-preview"><div><span class="preview-badge">Example assessment</span><h2>What a full energy assessment can tell you.</h2><p>This is the kind of plain-English answer I aim to give after reviewing your real bill. The exact result depends on your property and energy use.</p><a class="btn btn-primary" href="${rootUrl('upload-bill.html')}">Upload My Bill for Free Assessment</a></div><div class="preview-report"><div><span>Current position</span><strong>What you use and what you pay</strong><small>Bill amount, usage, tariff and any solar credits shown.</small></div><div><span>What I found</span><strong>The main opportunity or problem</strong><small>Solar, battery, existing-system review or sometimes no change.</small></div><div><span>Options considered</span><strong>What is worth comparing</strong><small>Simple options with the assumptions and missing information made clear.</small></div><div><span>Next step</span><strong>What I would check next</strong><small>You can stop there, send more information, or book a call to talk it through.</small></div></div></div>`;
     if (proof.nextElementSibling) proof.insertAdjacentElement('afterend', preview);
   }
 
@@ -124,10 +178,10 @@
   if (journeyPages.has(page) && !document.querySelector('.site-journey')) {
     const active = page === 'calculator.html' ? 2 : page === 'upload-bill.html' ? 3 : page === 'book.html' ? 4 : 0;
     const steps = [
-      ['1','60 Second Check','Fast first result','index.html#solar-check'],
-      ['2','Full Calculator','More detail','calculator.html'],
-      ['3','Free Full Energy Assessment','Upload one bill','upload-bill.html'],
-      ['4','Book a Call','Talk it through','book.html']
+      ['1','60 Second Check','Fast first result',rootUrl('index.html#solar-check')],
+      ['2','Full Calculator','More detail',rootUrl('calculator.html')],
+      ['3','Free Full Energy Assessment','Upload one bill',rootUrl('upload-bill.html')],
+      ['4','Book a Call','Talk it through',rootUrl('book.html')]
     ];
     const section = document.createElement('section');
     section.className = 'site-journey';
