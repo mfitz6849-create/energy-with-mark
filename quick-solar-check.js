@@ -2,7 +2,7 @@
   'use strict';
 
   const LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwODBPWtpOHekwSVCMoEgReUiHTOFsh4kVsRq3fCJDvocAs34gqTOBrkjW3KuLubXA/exec';
-  const DETAIL_CALCULATOR = 'https://mfitz6849-create.github.io/solar-savings-calculator/';
+  const DETAIL_CALCULATOR = 'calculator.html';
   const form = document.getElementById('quickSolarCheck');
   if (!form) return;
 
