@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Solar Savings Calculator | Energy With Mark</title>
+<meta name="description" content="Use a simple solar and battery calculator to see what may help your home, business, farm or community site."/>
+<link href="styles.css" rel="stylesheet"/>
+<link href="homepage-v2.css" rel="stylesheet"/>
+<link href="calculator-v2.css" rel="stylesheet"/>
+<link rel="canonical" href="https://energywithmark.com.au/calculator.html"/>
+</head>
+<body class="public-v2 calc-page">
+<header class="header"><div class="container nav">
+<a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>MARK FITZPATRICK · RENEWABLE ENERGY SPECIALIST</span></span></a>
+<button aria-label="Open menu" class="nav-toggle">☰</button>
+<nav class="nav-links"><a href="business.html">Business</a><a href="home.html">Home</a><a href="existing-solar.html">Existing Solar</a><a href="calculator.html" aria-current="page">Calculator</a><a href="learn.html">Learn</a><a href="how-i-help.html">How I Help</a></nav>
+<a class="btn btn-primary" href="#calculator">Start Calculator</a>
+</div></header>
+<main>
+<section class="calc-hero"><div class="container calc-hero-grid">
+<div>
+<div class="eyebrow">Free solar and battery calculator</div>
+<h1>See what solar could do for you.</h1>
+<p class="lead">Answer a few simple questions. You will see a starting solar size, possible savings and whether a battery may be worth a closer look.</p>
+<div class="calc-hero-points"><span>Simple questions</span><span>No solar knowledge needed</span><span>Free first estimate</span></div>
+<a class="btn btn-primary" href="#calculator">Start My Calculator</a>
+</div>
+<div class="sun-home-graphic" role="img" aria-label="Simple picture showing sunlight flowing to a building, battery and electricity grid">
+<div class="sun-shape">☀</div><div class="flow-line l1"></div><div class="home-shape">⌂<small>Your place</small></div><div class="flow-line l2"></div><div class="battery-shape">▣<small>Battery</small></div><div class="grid-shape">⌁<small>Grid</small></div>
+</div>
+</div></section>
+
+<section class="section-sm"><div class="container"><div class="simple-flow" aria-label="How the calculator works">
+<div><span>1</span><strong>Tell us about your place</strong><small>Home, business, farm or club</small></div>
+<i>→</i>
+<div><span>2</span><strong>Add your power bill</strong><small>An estimate is fine</small></div>
+<i>→</i>
+<div><span>3</span><strong>See your result</strong><small>Solar, battery and savings</small></div>
+</div></div></section>
+
+<section class="section" id="calculator"><div class="container">
+<div class="calc-shell">
+<aside class="calc-side">
+<div class="eyebrow">Your progress</div>
+<ol class="calc-progress" id="calcProgress">
+<li class="active"><span>1</span><div><strong>Your place</strong><small>What are we checking?</small></div></li>
+<li><span>2</span><div><strong>Your power use</strong><small>Bill and postcode</small></div></li>
+<li><span>3</span><div><strong>Your needs</strong><small>Solar and battery</small></div></li>
+<li><span>4</span><div><strong>Your result</strong><small>Simple comparison</small></div></li>
+</ol>
+<div class="side-help"><strong>Not sure?</strong><p>Choose the answer that feels closest. This is a first estimate, not a final quote.</p><a href="tel:+61434151237">Call Mark: 0434 151 237</a></div>
+</aside>
+
+<div class="calc-main">
+<form id="fullSolarCalculator" novalidate>
+<section class="calc-step active" data-step="1">
+<div class="step-tag">Step 1 of 4</div>
+<h2>What type of place are we checking?</h2>
+<p class="step-copy">Pick the closest match.</p>
+<div class="picture-options">
+<label><input type="radio" name="property" value="home"><span class="pic-icon">⌂</span><strong>Home</strong><small>House or townhouse</small></label>
+<label><input type="radio" name="property" value="business"><span class="pic-icon">▦</span><strong>Business</strong><small>Shop, office or workshop</small></label>
+<label><input type="radio" name="property" value="farm"><span class="pic-icon">⌁</span><strong>Farm</strong><small>Rural or farm site</small></label>
+<label><input type="radio" name="property" value="community"><span class="pic-icon">★</span><strong>Club or community site</strong><small>Sporting or shared facility</small></label>
+</div>
+<h3>What do you want most?</h3>
+<div class="plain-options">
+<label><input type="radio" name="goal" value="bills"><span><strong>Lower my power bills</strong><small>Use less power from the grid</small></span></label>
+<label><input type="radio" name="goal" value="battery"><span><strong>See if a battery may help</strong><small>Use more solar later in the day</small></span></label>
+<label><input type="radio" name="goal" value="future"><span><strong>Plan for future power use</strong><small>EV, new equipment or more electricity use</small></span></label>
+</div>
+<p class="calc-error" id="error1"></p>
+<div class="calc-actions end"><button type="button" class="btn btn-primary" data-next="2">Next</button></div>
+</section>
+
+<section class="calc-step" data-step="2">
+<div class="step-tag">Step 2 of 4</div>
+<h2>Tell us about your power bill.</h2>
+<p class="step-copy">You do not need the exact number. A good estimate is enough to start.</p>
+<div class="simple-fields">
+<label><span>About how much is your bill?</span><div class="money-field"><b>$</b><input id="billAmount" type="number" min="1" inputmode="decimal" placeholder="650"></div></label>
+<label><span>How often do you get this bill?</span><select id="billFrequency"><option value="monthly">Each month</option><option value="quarterly" selected>Every 3 months</option><option value="annual">Each year</option></select></label>
+<label><span>Postcode</span><input id="postcode" type="text" inputmode="numeric" maxlength="4" placeholder="3500"></label>
+<label><span>When do you use the most power?</span><select id="dayUse"><option value="30">Mostly after sunset</option><option value="45" selected>Morning and evening</option><option value="60">A fair amount during the day</option><option value="75">Mostly during the day</option><option value="90">Almost all during the day</option></select></label>
+</div>
+<div class="tip-picture"><span class="tip-sun">☀</span><div><strong>Why does daytime use matter?</strong><p>Solar works best when you can use the power while the sun is shining.</p></div></div>
+<p class="calc-error" id="error2"></p>
+<div class="calc-actions"><button type="button" class="btn btn-secondary" data-back="1">Back</button><button type="button" class="btn btn-primary" data-next="3">Next</button></div>
+</section>
+
+<section class="calc-step" data-step="3">
+<div class="step-tag">Step 3 of 4</div>
+<h2>What do you already have?</h2>
+<p class="step-copy">This helps us avoid suggesting the wrong next step.</p>
+<h3>Do you already have solar?</h3>
+<div class="yes-no">
+<label><input type="radio" name="existingSolar" value="no"><span>No</span></label>
+<label><input type="radio" name="existingSolar" value="yes"><span>Yes</span></label>
+<label><input type="radio" name="existingSolar" value="unsure"><span>Not sure</span></label>
+</div>
+<div class="existing-size hidden" id="existingSizeWrap"><label><span>About how big is your solar system? <em>Optional</em></span><div class="suffix-field"><input id="existingSize" type="number" min="1" step="0.1" placeholder="6.6"><b>kW</b></div></label></div>
+<h3>How interested are you in a battery?</h3>
+<div class="plain-options battery-options">
+<label><input type="radio" name="battery" value="compare" checked><span><strong>Show me both</strong><small>Compare solar with and without a battery</small></span></label>
+<label><input type="radio" name="battery" value="yes"><span><strong>I am interested in a battery</strong><small>Show a battery option</small></span></label>
+<label><input type="radio" name="battery" value="no"><span><strong>Solar only for now</strong><small>Keep the first estimate simple</small></span></label>
+</div>
+<p class="calc-error" id="error3"></p>
+<div class="calc-actions"><button type="button" class="btn btn-secondary" data-back="2">Back</button><button type="button" class="btn btn-primary" id="calculateFull">Show My Result</button></div>
+</section>
+
+<section class="calc-step results-step" data-step="4">
+<div class="result-head"><div><div class="step-tag">Your first estimate</div><h2 id="resultTitle">Your solar result</h2><p id="resultIntro"></p></div><button type="button" class="btn btn-secondary" data-back="3">Change Answers</button></div>
+
+<div class="result-visual" id="resultVisual">
+<div class="rv-sun">☀</div><div class="rv-arrow">→</div><div class="rv-home"><span>⌂</span><strong>Your place</strong></div><div class="rv-arrow">→</div><div class="rv-battery"><span>▣</span><strong>Battery</strong></div><div class="rv-arrow">→</div><div class="rv-grid"><span>⌁</span><strong>Grid</strong></div>
+</div>
+
+<div class="big-result-grid">
+<div><span>Solar starting size</span><strong id="solarSizeResult">—</strong><small>First estimate only</small></div>
+<div><span>Battery starting size</span><strong id="batterySizeResult">—</strong><small id="batteryNote">If useful</small></div>
+<div><span>Possible solar saving</span><strong id="solarSavingResult">—</strong><small>Per year</small></div>
+<div><span>Possible solar + battery saving</span><strong id="batterySavingResult">—</strong><small>Per year</small></div>
+</div>
+
+<div class="compare-block">
+<div class="compare-heading"><div><div class="eyebrow">Simple comparison</div><h3>What could change your bill?</h3></div><p>These bars show the first-year estimate.</p></div>
+<div class="compare-row"><div class="compare-label"><strong>Grid only</strong><span id="gridCostLabel">—</span></div><div class="bar-track"><i id="gridBar" style="width:100%"></i></div></div>
+<div class="compare-row"><div class="compare-label"><strong>Solar</strong><span id="solarCostLabel">—</span></div><div class="bar-track"><i id="solarBar"></i></div></div>
+<div class="compare-row" id="batteryCompareRow"><div class="compare-label"><strong>Solar + battery</strong><span id="batteryCostLabel">—</span></div><div class="bar-track"><i id="batteryBar"></i></div></div>
+</div>
+
+<div class="money-cards">
+<div><span>Solar payback</span><strong id="solarPayback">—</strong><small>Rough guide</small></div>
+<div><span>Solar + battery payback</span><strong id="batteryPayback">—</strong><small>Rough guide</small></div>
+<div><span>10-year solar benefit</span><strong id="tenYearSolar">—</strong><small>After estimated system cost</small></div>
+<div><span>10-year solar + battery benefit</span><strong id="tenYearBattery">—</strong><small>After estimated system cost</small></div>
+</div>
+
+<div class="plain-warning"><strong>This is a first estimate, not a quote.</strong><p>Your real result depends on your actual power use, roof, meter, solar equipment, prices and local rules. A recent power bill will make the next review much better.</p></div>
+
+<div class="lead-panel">
+<div><div class="eyebrow">Want Mark to check this?</div><h3>Save your result and ask for a review.</h3><p>I can check the estimate against your real bill and explain the next step in plain English.</p></div>
+<div id="leadFields">
+<div class="simple-fields lead-fields">
+<label><span>Name</span><input id="leadName" autocomplete="name"></label>
+<label><span>Mobile</span><input id="leadPhone" type="tel" autocomplete="tel"></label>
+<label class="wide"><span>Email</span><input id="leadEmail" type="email" autocomplete="email"></label>
+</div>
+<label class="consent-line"><input id="leadConsent" type="checkbox"> <span>Mark may contact me about this result. <a href="privacy.html">Privacy policy</a>.</span></label>
+<p class="calc-error" id="leadError"></p>
+<div class="result-actions"><button type="button" class="btn btn-primary" id="saveResult">Save My Result</button><a class="btn btn-secondary" href="upload-bill.html">Send My Power Bill</a><button type="button" class="btn btn-ghost" id="printResult">Print or Save Result</button></div>
+</div>
+<div class="saved-panel hidden" id="savedPanel"><strong>✓ Your result has been saved.</strong><p>Mark can now review the information you entered. Sending a recent power bill will make the review more useful.</p><div class="result-actions"><a class="btn btn-primary" href="upload-bill.html">Send My Power Bill</a><a class="btn btn-secondary" href="book.html">Ask for a Call</a></div></div>
+</div>
+</section>
+</form>
+</div>
+</div>
+</div></section>
+
+<section class="section-sm"><div class="container">
+<div class="info-picture-row">
+<div class="info-picture"><div class="circle-icon">☀</div><h3>Solar makes power in daylight</h3><p>Your home or business uses solar first. Extra solar may go to the grid or a battery.</p></div>
+<div class="info-picture"><div class="circle-icon">▣</div><h3>A battery moves solar to later</h3><p>A battery can store extra solar and use it after the sun goes down.</p></div>
+<div class="info-picture"><div class="circle-icon">$</div><h3>The best choice comes from your numbers</h3><p>A bigger system is not always better. The aim is to find the option that gives useful value.</p></div>
+</div>
+</div></section>
+</main>
+<footer class="footer"><div class="container footer-grid"><div><h3>Energy With Mark</h3><p>Mark Fitzpatrick · Renewable Energy Specialist</p><p><a href="tel:+61434151237">0434 151 237</a><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au">mark.fitzpatrick@classaenergy.com.au</a></p></div><div><h3>Explore</h3><p><a href="home.html">Home energy</a><br/><a href="business.html">Business energy</a><br/><a href="existing-solar.html">Already have solar</a><br/><a href="learn.html">Learn</a></p></div><div><h3>Start</h3><p><a href="calculator.html">Solar calculator</a><br/><a href="upload-bill.html">Send a power bill</a><br/><a href="book.html">Talk to Mark</a></p></div></div><div class="container footer-small"><a href="service-relationship.html">How the service works</a> · <a href="privacy.html">Privacy policy</a></div></footer>
+<div class="mobile-cta"><a class="btn btn-primary" href="#calculator">Start Calculator</a></div>
+<script src="script.js"></script>
+<script src="calculator-v2.js"></script>
+</body></html>
