@@ -8,13 +8,29 @@
 <link href="styles.css" rel="stylesheet"/><link href="homepage-v2.css" rel="stylesheet"/><link href="quick-solar-check.css" rel="stylesheet"/><link href="personal-brand.css" rel="stylesheet"/>
 <meta name="author" content="Mark Fitzpatrick"/><meta name="robots" content="index,follow,max-image-preview:large"/>
 <link rel="canonical" href="https://energywithmark.com.au/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="Energy With Mark | Solar • Batteries • Energy Advice"/>
+<meta property="og:description" content="Straight answers about solar, batteries and your power bill. Free advice, no pressure and clear next steps."/>
+<meta property="og:site_name" content="Energy With Mark"/>
+<meta property="og:url" content="https://energywithmark.com.au/"/>
+<meta property="og:image" content="https://energywithmark.com.au/assets/energy-with-mark-social-share.jpg"/>
+<meta property="og:image:secure_url" content="https://energywithmark.com.au/assets/energy-with-mark-social-share.jpg"/>
+<meta property="og:image:type" content="image/jpeg"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="Energy With Mark — straight answers about solar, batteries and your power bill."/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Energy With Mark | Solar • Batteries • Energy Advice"/>
+<meta name="twitter:description" content="Straight answers about solar, batteries and your power bill. Free advice, no pressure and clear next steps."/>
+<meta name="twitter:image" content="https://energywithmark.com.au/assets/energy-with-mark-social-share.jpg"/>
+<meta name="twitter:image:alt" content="Energy With Mark — straight answers about solar, batteries and your power bill."/>
 </head>
 <body class="public-v2 ewm-home">
 <header class="header home-header"><div class="container nav">
 <a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>SOLAR • BATTERIES • ENERGY ADVICE</span></span></a>
 <button aria-label="Open menu" class="nav-toggle">☰</button>
 <nav class="nav-links"><a href="index.html">Home</a><a href="#how-it-works">How It Works</a><a href="how-i-help.html">About Mark</a><a href="learn.html">Learn</a><a href="how-i-get-paid.html">How I Get Paid</a></nav>
-<a class="btn btn-outline-light" href="book.html">Get in Touch</a>
+<a class="btn btn-outline-light" href="book.html">Book a Call</a>
 </div></header>
 <main>
 
@@ -27,7 +43,7 @@
 <div class="hero-action-grid">
 <a class="hero-action primary" href="#solar-check"><span class="action-icon">◷</span><span><strong>Start 60 Second Check</strong><small>Quick first result</small></span></a>
 <a class="hero-action light" href="calculator.html"><span class="action-icon">▦</span><span><strong>Use Full Calculator</strong><small>See savings and payback</small></span></a>
-<a class="hero-action outline" href="upload-bill.html"><span class="action-icon">✉</span><span><strong>Send My Power Bill</strong><small>Get a free full energy assessment</small></span></a>
+<a class="hero-action outline" href="upload-bill.html"><span class="action-icon">✉</span><span><strong>Get Free Full Energy Assessment</strong><small>Upload one recent power bill</small></span></a>
 </div>
 <div class="hero-trust"><span>Free advice</span><span>No pressure</span><span>No solar knowledge needed</span><span>Fast first result</span></div>
 </div>
@@ -41,8 +57,8 @@
 <div class="journey-grid">
 <a href="#solar-check" class="journey-card"><span class="journey-number">1</span><div class="journey-icon">◷</div><h3>60 Second Check</h3><p>Answer a few simple questions and get a fast first result.</p><strong>Start here →</strong></a>
 <a href="calculator.html" class="journey-card"><span class="journey-number">2</span><div class="journey-icon">▦</div><h3>Full Calculator</h3><p>See a deeper estimate for solar, battery, savings and rough payback.</p><strong>See more detail →</strong></a>
-<a href="upload-bill.html" class="journey-card featured"><span class="journey-number">3</span><div class="journey-icon">✉</div><h3>Upload Your Bill</h3><p>Send one recent power bill and I will prepare a free full energy assessment.</p><strong>Get my free assessment →</strong></a>
-<a href="book.html" class="journey-card"><span class="journey-number">4</span><div class="journey-icon">☎</div><h3>Talk It Through</h3><p>Book a call if you want me to explain the assessment and your options.</p><strong>Book a call →</strong></a>
+<a href="upload-bill.html" class="journey-card featured"><span class="journey-number">3</span><div class="journey-icon">✉</div><h3>Free Full Energy Assessment</h3><p>Upload one recent power bill and I will take a closer look at your real numbers.</p><strong>Upload my bill →</strong></a>
+<a href="book.html" class="journey-card"><span class="journey-number">4</span><div class="journey-icon">☎</div><h3>Book a Call</h3><p>Book a call if you want me to explain the assessment and your options.</p><strong>Book a call →</strong></a>
 </div></div></section>
 
 <section class="quick-check-section" id="solar-check"><div class="container quick-check-grid">
@@ -63,9 +79,9 @@
 <div class="quick-field"><span>Postcode</span><input id="quickPostcode" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 3500"></div>
 <div class="quick-field"><span>Do you already have solar?</span><div class="quick-options" style="grid-template-columns:1fr 1fr"><label class="quick-option"><input type="radio" name="quickExistingSolar" value="no"><span style="min-height:49px;padding:11px 13px"><strong>No</strong></span></label><label class="quick-option"><input type="radio" name="quickExistingSolar" value="yes"><span style="min-height:49px;padding:11px 13px"><strong>Yes</strong></span></label></div></div>
 </div><p class="quick-error" id="quickError2"></p><div class="quick-actions"><button class="quick-back" id="quickBack2" type="button">← Back</button><button class="btn btn-primary" id="quickCalculate" type="button">Show My Result →</button></div></section>
-<section class="quick-step" data-step="3"><div class="quick-result"><span class="quick-result-label">Your first result</span><h2 id="quickResultStatus">Solar looks worth a closer look</h2><p id="quickResultText"></p><div class="quick-kpis"><div class="quick-kpi"><span>Possible solar size</span><strong id="quickSolarSize">—</strong></div><div class="quick-kpi"><span>Possible yearly saving</span><strong id="quickSavingRange">—</strong></div><div class="quick-kpi"><span>Your yearly bill</span><strong id="quickAnnualBill">—</strong></div></div><p class="quick-result-note">This is a first guide, not a quote. Your real result depends on your power use, roof, current solar and final prices.</p></div>
+<section class="quick-step" data-step="3"><div class="quick-result"><span class="quick-result-label">Your first result</span><h2 id="quickResultStatus">Solar looks worth a closer look</h2><p id="quickResultText"></p><div class="quick-kpis"><div class="quick-kpi"><span>Possible solar size</span><strong id="quickSolarSize">—</strong></div><div class="quick-kpi"><span>Possible yearly saving</span><strong id="quickSavingRange">—</strong></div><div class="quick-kpi"><span>Your yearly bill</span><strong id="quickAnnualBill">—</strong></div></div><p class="quick-result-note">This is a first estimate, not a full assessment or final quote. Your real result depends on your power use, roof, current solar and final prices.</p></div>
 <div class="lead-unlock"><div id="quickLeadFields"><h3>Save your result</h3><p id="quickLeadSummary">Add your details if you want Mark to help with the next step. The advice is free.</p><div class="quick-fields"><div class="quick-field"><span>Name</span><input id="quickName" autocomplete="name"></div><div class="quick-field"><span>Mobile</span><input id="quickPhone" type="tel" autocomplete="tel"></div><div class="quick-field full"><span>Email</span><input id="quickEmail" type="email" autocomplete="email"></div></div><label class="quick-consent"><input id="quickConsent" type="checkbox"><span>Mark may contact me about this result. <a href="privacy.html"><strong>Privacy policy</strong></a>.</span></label><p class="quick-error" id="quickLeadError"></p><div class="quick-actions"><button class="quick-back" id="quickBack3" type="button">← Change answers</button><button class="btn btn-primary" id="quickLeadButton" type="button">Save My Result</button></div></div>
-<div class="quick-success hidden" id="quickSuccess"><strong>Your result has been saved.</strong><p>Use the full calculator for a closer look, or upload your bill for a free full energy assessment.</p><div class="btns"><a class="btn btn-primary" id="detailedCalculatorLink" href="calculator.html">Use Full Calculator</a><a class="btn btn-secondary" href="upload-bill.html">Get My Free Energy Assessment</a></div></div></div></section>
+<div class="quick-success hidden" id="quickSuccess"><strong>Your result has been saved.</strong><p>Use the full calculator for a closer look, or upload your bill for a free full energy assessment.</p><div class="btns"><a class="btn btn-primary" id="detailedCalculatorLink" href="calculator.html">Use Full Calculator</a><a class="btn btn-secondary" href="upload-bill.html">Get Free Full Energy Assessment</a></div></div></div></section>
 </form></div></div></section>
 
 <section class="section help-section"><div class="container"><div class="section-heading center"><div class="eyebrow">How Mark helps</div><h2>Clear advice without the jargon.</h2></div><div class="help-grid">
