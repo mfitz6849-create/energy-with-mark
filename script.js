@@ -37,11 +37,37 @@ if (!document.querySelector('link[href$="conversion-v1.css"]')) {
 }
 document.body.classList.add('public-v2');
 
+// Site-wide keyboard support: a visible-on-focus skip link plus high-contrast focus rings.
+(function initialiseKeyboardAccessibility() {
+  if (!document.getElementById('ewm-accessibility-styles')) {
+    const styles = document.createElement('style');
+    styles.id = 'ewm-accessibility-styles';
+    styles.textContent = `
+      .skip-link{position:fixed;left:12px;top:12px;z-index:1000;padding:10px 14px;border-radius:10px;background:#C6E11A;color:#0F2E2E;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.2);transform:translateY(-180%);transition:transform .15s ease}
+      .skip-link:focus{transform:translateY(0)}
+      a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid #C6E11A!important;outline-offset:3px!important}
+    `;
+    document.head.appendChild(styles);
+  }
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    if (!mainContent.id) mainContent.id = 'main-content';
+    if (!mainContent.hasAttribute('tabindex')) mainContent.setAttribute('tabindex', '-1');
+    if (!document.querySelector('.skip-link')) {
+      const skipLink = document.createElement('a');
+      skipLink.className = 'skip-link';
+      skipLink.href = `#${mainContent.id}`;
+      skipLink.textContent = 'Skip to main content';
+      document.body.prepend(skipLink);
+    }
+  }
+})();
+
 if (!document.querySelector('link[rel="icon"]')) {
   const favicon = document.createElement('link');
   favicon.rel = 'icon';
-  favicon.type = 'image/svg+xml';
-  favicon.href = siteUrl('favicon.svg');
+  favicon.type = 'image/x-icon';
+  favicon.href = siteUrl('favicon.ico');
   document.head.appendChild(favicon);
 }
 
