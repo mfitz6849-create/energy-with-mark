@@ -58,6 +58,64 @@
     return amount * factor;
   }
 
+  function trackNextStep(type) {
+    const eventName = { calculator: 'calculator_start', assessment: 'bill_upload_start', booking: 'booking_start' }[type];
+    if (!eventName) return;
+    try { window.gtag?.('event', eventName, { source: '60_second_result_funnel' }); } catch (_) {}
+  }
+
+  function ensureNextStepFunnel() {
+    const leadUnlock = $('.lead-unlock');
+    const leadFields = $('#quickLeadFields');
+    if (!leadUnlock || !leadFields || leadUnlock.querySelector('.quick-next-funnel')) return;
+
+    const funnel = document.createElement('div');
+    funnel.className = 'quick-next-funnel';
+    funnel.setAttribute('aria-label', 'Choose your next step');
+    funnel.innerHTML = `
+      <div class="quick-next-heading">
+        <span class="quick-next-label">Your next step</span>
+        <h3>Keep going — choose how much help you want.</h3>
+        <p>You do not need to save this result or enter contact details to continue.</p>
+      </div>
+      <div class="quick-next-grid">
+        <a class="quick-next-card calculator" href="calculator.html" data-quick-next="calculator">
+          <span class="quick-next-number">2</span>
+          <div><strong>Use the Full Calculator</strong><small>See a deeper estimate for solar, battery, savings and rough payback.</small><b>Continue to Full Calculator →</b></div>
+        </a>
+        <a class="quick-next-card assessment" href="upload-bill.html" data-quick-next="assessment">
+          <span class="quick-next-number">3</span>
+          <div><strong>Get a Free Full Energy Assessment</strong><small>Best for a real answer. Upload one recent power bill and Mark reviews your actual numbers.</small><b>Upload My Bill →</b></div>
+        </a>
+        <a class="quick-next-card booking" href="book.html" data-quick-next="booking">
+          <span class="quick-next-number">☎</span>
+          <div><strong>Book a Free Call</strong><small>Prefer to talk? Ask Mark to explain the result and your options in plain English.</small><b>Book a Call →</b></div>
+        </a>
+      </div>
+      <div class="quick-save-divider"><span>Or save this quick result for later</span></div>`;
+
+    leadUnlock.insertBefore(funnel, leadFields);
+    funnel.querySelectorAll('[data-quick-next]').forEach((link) => {
+      link.addEventListener('click', () => trackNextStep(link.dataset.quickNext));
+    });
+
+    const saveHeading = leadFields.querySelector('h3');
+    if (saveHeading) saveHeading.textContent = 'Save this quick result (optional)';
+
+    const success = $('#quickSuccess');
+    const successText = success?.querySelector('p');
+    if (successText) successText.textContent = 'Your result is saved. Keep going with the full calculator, send your bill for a free full energy assessment, or book a call with Mark.';
+    const successButtons = success?.querySelector('.btns');
+    if (successButtons && !successButtons.querySelector('a[href="book.html"]')) {
+      const booking = document.createElement('a');
+      booking.className = 'btn btn-ghost';
+      booking.href = 'book.html';
+      booking.textContent = 'Book a Call';
+      booking.addEventListener('click', () => trackNextStep('booking'));
+      successButtons.appendChild(booking);
+    }
+  }
+
   function validateStep1() {
     const error = $('#quickError1');
     if (!selected('quickProperty')) { error.textContent = 'Choose the type of property.'; return false; }
@@ -115,8 +173,8 @@
     $('#quickSavingRange').textContent = existingSolar === 'yes' ? 'Needs system review' : `${money(low)}–${money(high)}`;
     $('#quickAnnualBill').textContent = money(bill);
     $('#quickLeadSummary').textContent = existingSolar === 'yes'
-      ? 'Send your details and I can help identify what to check in the existing system.'
-      : 'Send your details to save this enquiry, or continue into the detailed calculator for the full solar and battery comparison.';
+      ? 'Optional: save this result if you want Mark to have the quick-check details before reviewing your existing system.'
+      : 'Optional: save this result if you want Mark to have the quick-check details before you continue.';
     showStep(3);
   }
 
@@ -166,6 +224,7 @@
     }
   }
 
+  ensureNextStepFunnel();
   $('#quickNext1').addEventListener('click', () => { if (validateStep1()) showStep(2); });
   $('#quickBack2').addEventListener('click', () => showStep(1));
   $('#quickCalculate').addEventListener('click', () => { if (validateStep2()) calculate(); });
