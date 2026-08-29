@@ -9,3 +9,5 @@ Public website for Energy With Mark.
 Primary landing message: **Find out if solar can help you in less than 60 seconds.**
 
 The homepage now contains a native quick solar check that captures a lead after showing an initial result. The existing detailed Solar Savings Calculator remains available as the next-step assessment.
+
+Nothing on this branch changes the live site until the branch is reviewed and merged into `main`.
