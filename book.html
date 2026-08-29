@@ -13,6 +13,8 @@
   const ENDPOINT='https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const form=document.querySelector('form[data-form-type="booking"]'); if(!form)return;
   const button=form.querySelector('[type="submit"]'), errorBox=form.querySelector('.form-error'), status=form.querySelector('.submit-status'), success=form.querySelector('.success');
+  const dateInput=form.elements.preferredDate;
+  if(dateInput){const now=new Date();const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');dateInput.min=today;if(dateInput.value&&dateInput.value<today)dateInput.value='';}
   const get=name=>form.elements[name]?.value||'';
   const makeId=()=>`ewm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
   form.addEventListener('submit',event=>{event.preventDefault();if(!form.reportValidity())return;if(errorBox)errorBox.style.display='none';if(success)success.style.display='none';button.disabled=true;status.textContent='Sending your request…';try{window.gtag?.('event','booking_submit');}catch(_){}
