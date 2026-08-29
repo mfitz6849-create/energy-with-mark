@@ -194,7 +194,7 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
     const social = document.createElement('p');
     social.dataset.footerSocial = 'true';
     social.style.marginTop = '18px';
-    social.innerHTML = '<strong>Follow Energy With Mark</strong><br><a href="https://www.instagram.com/mark.fitzpatrick2026/" target="_blank" rel="noopener noreferrer">Instagram ↗</a> · <a href="https://www.facebook.com/profile.php?id=61592092305366" target="_blank" rel="noopener noreferrer">Facebook ↗</a> · <a href="https://www.youtube.com/@EnergywithMark" target="_blank" rel="noopener noreferrer">YouTube ↗</a> · <a href="https://www.linkedin.com/in/mark-fitzpatrick-b9378017b/" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a> · <a href="https://www.tiktok.com/@markfitzpatrickenergy" target="_blank" rel="noopener noreferrer">TikTok ↗</a>';
+    social.innerHTML = '<strong>Follow Energy With Mark</strong><br><a href="https://www.instagram.com/mark.fitzpatrick2026/" target="_blank" rel="noopener noreferrer">Instagram ↗</a> · <a href="https://www.facebook.com/profile.php?id=61592092305366" target="_blank" rel="noopener noreferrer">Facebook ↗</a> · <a href="https://www.youtube.com/@EnergywithMark" target="_blank" rel="noopener noreferrer">YouTube ↗</a> · <a href="https://www.linkedin.com/in/mark-fitzpatrick-b9378017b/" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a> · <a href="https://www.tiktok.com/@markfitzpatrickenergy" target="_blank" rel="noopener noreferrer">TikTok ↗</a> · <a href="https://markfitzpatrickenergy.substack.com/" target="_blank" rel="noopener noreferrer">Substack ↗</a>';
     footerFirst.appendChild(social);
   }
 })();
@@ -243,6 +243,8 @@ document.querySelectorAll('a[href]').forEach(link => {
       sendAnalyticsEvent('social_click', { platform: 'linkedin' });
     } else if (href.includes('tiktok.com')) {
       sendAnalyticsEvent('social_click', { platform: 'tiktok' });
+    } else if (href.includes('substack.com')) {
+      sendAnalyticsEvent('social_click', { platform: 'substack' });
     } else if (href.includes('articles/')) {
       sendAnalyticsEvent('article_open', { article_path: new URL(href, window.location.href).pathname });
     }
