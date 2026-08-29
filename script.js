@@ -15,6 +15,15 @@ const GA_MEASUREMENT_ID = 'G-22EYYXBP2S';
   document.head.appendChild(tag);
 })();
 
+// Give older public pages the same Energy With Mark colours and logo treatment.
+if (!document.querySelector('link[href$="homepage-v2.css"]')) {
+  const brandStyles = document.createElement('link');
+  brandStyles.rel = 'stylesheet';
+  brandStyles.href = new URL('/homepage-v2.css', window.location.origin).href;
+  document.head.appendChild(brandStyles);
+}
+document.body.classList.add('public-v2');
+
 if (!document.querySelector('link[rel="icon"]')) {
   const favicon = document.createElement('link');
   favicon.rel = 'icon';
@@ -27,7 +36,6 @@ const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
 
 if (navLinks) {
-  // Older pages may still say "Tools". Keep old links useful by sending them to the new calculator.
   navLinks.querySelectorAll('a').forEach(link => {
     const href = link.getAttribute('href') || '';
     if (href.includes('tools.html')) {
@@ -88,7 +96,6 @@ document.querySelectorAll('a[href]').forEach(link => {
   });
 });
 
-// Add breadcrumb structured data when a page already shows breadcrumbs.
 const breadcrumbNav = document.querySelector('nav.breadcrumbs');
 if (breadcrumbNav) {
   const items = [...breadcrumbNav.querySelectorAll('a[href]')].map((link, index) => ({
