@@ -28,6 +28,12 @@ if (!document.querySelector('link[href$="personal-brand.css"]')) {
   portraitStyles.href = new URL('/personal-brand.css', window.location.origin).href;
   document.head.appendChild(portraitStyles);
 }
+if (!document.querySelector('link[href$="conversion-v1.css"]')) {
+  const conversionStyles = document.createElement('link');
+  conversionStyles.rel = 'stylesheet';
+  conversionStyles.href = new URL('/conversion-v1.css', window.location.origin).href;
+  document.head.appendChild(conversionStyles);
+}
 document.body.classList.add('public-v2');
 
 if (!document.querySelector('link[rel="icon"]')) {
@@ -267,4 +273,12 @@ if (breadcrumbNav) {
     schema.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items });
     document.head.appendChild(schema);
   }
+}
+
+// Load the site-wide conversion, consistency and profile layer after the core runtime.
+if (!document.querySelector('script[src$="conversion-v1.js"]')) {
+  const conversionScript = document.createElement('script');
+  conversionScript.src = new URL('/conversion-v1.js', window.location.origin).href;
+  conversionScript.defer = true;
+  document.body.appendChild(conversionScript);
 }
