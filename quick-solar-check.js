@@ -92,11 +92,22 @@
           <div><strong>Book a Free Call</strong><small>Prefer to talk? Ask Mark to explain the result and your options in plain English.</small><b>Book a Call →</b></div>
         </a>
       </div>
-      <div class="quick-save-divider"><span>Or save this quick result for later</span></div>`;
+      <div class="quick-save-divider"><span>Or save this quick result for later</span></div>
+      <button class="quick-save-toggle" type="button" aria-expanded="false">Save this quick result instead</button>`;
 
     leadUnlock.insertBefore(funnel, leadFields);
     funnel.querySelectorAll('[data-quick-next]').forEach((link) => {
       link.addEventListener('click', () => trackNextStep(link.dataset.quickNext));
+    });
+
+    const saveToggle = funnel.querySelector('.quick-save-toggle');
+    leadFields.classList.add('quick-save-collapsed');
+    saveToggle?.addEventListener('click', () => {
+      const opening = leadFields.classList.contains('quick-save-collapsed');
+      leadFields.classList.toggle('quick-save-collapsed', !opening);
+      saveToggle.setAttribute('aria-expanded', String(opening));
+      saveToggle.textContent = opening ? 'Hide save form' : 'Save this quick result instead';
+      if (opening) $('#quickName')?.focus();
     });
 
     const saveHeading = leadFields.querySelector('h3');
