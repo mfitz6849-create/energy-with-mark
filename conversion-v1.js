@@ -76,6 +76,19 @@
     social.innerHTML = `<strong>Follow Energy With Mark</strong><div class="social-chip-row">${socialProfiles.map(([label,mark,url]) => `<a class="social-chip" href="${url}" target="_blank" rel="noopener noreferrer" aria-label="Energy With Mark on ${label}"><span class="social-mark">${mark}</span><span>${label}</span></a>`).join('')}</div>`;
   }
 
+  if (page === 'index.html' && !document.querySelector('.proof-section')) {
+    const proof = document.createElement('section');
+    proof.className = 'proof-section';
+    proof.innerHTML = `<div class="container"><div class="proof-head"><div class="eyebrow">Common situations</div><h2>Different energy problems need different answers.</h2><p>The goal is not to sell everyone the same system. It is to work out what is worth checking for your situation.</p></div><div class="proof-grid"><div class="proof-card"><div class="proof-icon">⌂</div><h3>High home power bills</h3><p>Check whether solar may reduce grid use and whether a battery is actually worth comparing.</p></div><div class="proof-card"><div class="proof-icon">☀</div><h3>You already have solar</h3><p>Review the current system, exports and later grid use before adding more equipment.</p></div><div class="proof-card"><div class="proof-icon">▦</div><h3>Business energy costs</h3><p>Look at daytime use, tariff structure and whether the investment case is strong enough to go further.</p></div><div class="proof-card"><div class="proof-icon">★</div><h3>Club or community site</h3><p>Start with the whole site, then work out which energy option fits how the facility is actually used.</p></div></div></div>`;
+    const assessment = document.querySelector('.assessment-section');
+    if (assessment) assessment.insertAdjacentElement('beforebegin', proof);
+
+    const preview = document.createElement('section');
+    preview.className = 'assessment-preview-section';
+    preview.innerHTML = `<div class="container assessment-preview"><div><span class="preview-badge">Example assessment</span><h2>What a full energy assessment can tell you.</h2><p>This is the kind of plain-English answer I aim to give after reviewing your real bill. The exact result depends on your property and energy use.</p><a class="btn btn-primary" href="upload-bill.html">Upload My Bill for Free Assessment</a></div><div class="preview-report"><div><span>Current position</span><strong>What you use and what you pay</strong><small>Bill amount, usage, tariff and any solar credits shown.</small></div><div><span>What I found</span><strong>The main opportunity or problem</strong><small>Solar, battery, existing-system review or sometimes no change.</small></div><div><span>Options considered</span><strong>What is worth comparing</strong><small>Simple options with the assumptions and missing information made clear.</small></div><div><span>Next step</span><strong>What I would check next</strong><small>You can stop there, send more information, or book a call to talk it through.</small></div></div></div>`;
+    if (proof.nextElementSibling) proof.insertAdjacentElement('afterend', preview);
+  }
+
   const journeyPages = new Set(['home.html','business.html','existing-solar.html','community.html','calculator.html','upload-bill.html','book.html','how-i-help.html']);
   if (journeyPages.has(page) && !document.querySelector('.site-journey')) {
     const active = page === 'calculator.html' ? 2 : page === 'upload-bill.html' ? 3 : page === 'book.html' ? 4 : 0;
