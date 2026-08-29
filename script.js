@@ -70,6 +70,20 @@ if (navToggle && navLinks) {
   });
 }
 
+// Keep the new transparency pages easy to find from older public pages too.
+document.querySelectorAll('.footer-small').forEach(footer => {
+  const addFooterLink = (href, text) => {
+    if (footer.querySelector(`a[href$="${href}"]`)) return;
+    if ((footer.textContent || '').trim()) footer.appendChild(document.createTextNode(' · '));
+    const link = document.createElement('a');
+    link.href = href;
+    link.textContent = text;
+    footer.appendChild(link);
+  };
+  addFooterLink('how-i-get-paid.html', 'How I Get Paid');
+  addFooterLink('who-i-work-with.html', 'Who I Work With');
+});
+
 function sendAnalyticsEvent(name, params = {}) {
   if (typeof window.gtag !== 'function') return;
   window.gtag('event', name, { page_path: window.location.pathname, ...params });
