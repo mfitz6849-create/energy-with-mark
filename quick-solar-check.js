@@ -49,7 +49,7 @@
 
   function showStep(step) {
     $$('.quick-step').forEach((el) => el.classList.toggle('active', Number(el.dataset.step) === step));
-    $$('.quick-progress i').forEach((el, index) => el.classList.toggle('active', index < step));
+    document.querySelectorAll('.quick-progress i').forEach((el, index) => el.classList.toggle('active', index < step));
   }
 
   function annualBill() {
@@ -112,11 +112,11 @@
     $('#quickResultStatus').textContent = status;
     $('#quickResultText').textContent = explanation;
     $('#quickSolarSize').textContent = existingSolar === 'yes' ? 'Review first' : `${number(solarKw)} kW`;
-    $('#quickSavingRange').textContent = `${money(low)}–${money(high)}`;
+    $('#quickSavingRange').textContent = existingSolar === 'yes' ? 'Needs system review' : `${money(low)}–${money(high)}`;
     $('#quickAnnualBill').textContent = money(bill);
     $('#quickLeadSummary').textContent = existingSolar === 'yes'
       ? 'Send your details and I can help identify what to check in the existing system.'
-      : `Send your details to save this enquiry, or continue into the detailed calculator for the full solar and battery comparison.`;
+      : 'Send your details to save this enquiry, or continue into the detailed calculator for the full solar and battery comparison.';
     showStep(3);
   }
 
@@ -145,7 +145,7 @@
       solarRecommendationKw: result.existingSolar === 'yes' ? '' : result.solarKw,
       systemPlan: '60-second solar check',
       batteryRecommendationKwh: '',
-      estimatedAnnualSavings: Math.round(result.savings),
+      estimatedAnnualSavings: result.existingSolar === 'yes' ? '' : Math.round(result.savings),
       estimatedPaybackYears: 'Detailed review required',
       state: result.state,
       appointmentRequested: 'No',
