@@ -64,6 +64,31 @@
     if (exactReplacements.has(text)) el.textContent = exactReplacements.get(text);
   });
 
+  if (page === 'calculator.html') {
+    const sideHelp = document.querySelector('.side-help p');
+    if (sideHelp) sideHelp.textContent = 'Choose the answer that feels closest. This is a first estimate, not a full assessment or final quote.';
+    const warning = document.querySelector('.plain-warning strong');
+    if (warning) warning.textContent = 'This is a first estimate, not a full assessment or final quote.';
+    document.querySelectorAll('.result-actions a[href$="upload-bill.html"]').forEach((link) => { link.textContent = 'Get Free Full Energy Assessment'; });
+    const calcButton = document.getElementById('calculateFull');
+    if (calcButton) calcButton.addEventListener('click', () => setTimeout(() => {
+      if (document.querySelector('.calc-step[data-step="4"].active')) {
+        try { window.gtag?.('event','full_calculator_complete'); } catch (_) {}
+      }
+    }, 0));
+  }
+
+  if (page === 'index.html') {
+    const quickNote = document.querySelector('.quick-result-note');
+    if (quickNote) quickNote.textContent = 'This is a first estimate, not a full assessment or final quote. Your real result depends on your power use, roof, current solar and final prices.';
+    const quickButton = document.getElementById('quickCalculate');
+    if (quickButton) quickButton.addEventListener('click', () => setTimeout(() => {
+      if (document.querySelector('.quick-step[data-step="3"].active')) {
+        try { window.gtag?.('event','quick_check_complete'); } catch (_) {}
+      }
+    }, 0));
+  }
+
   const footerFirst = document.querySelector('.footer .footer-grid > div:first-child');
   if (footerFirst) {
     let social = footerFirst.querySelector('[data-footer-social]');
