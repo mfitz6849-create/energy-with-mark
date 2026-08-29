@@ -3,15 +3,16 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>Energy With Mark | Clear Solar & Battery Advice</title>
-<meta content="Clear solar and battery advice for Australian homes, businesses, sporting clubs and community organisations. Start with your bill, your energy use and what you want to achieve." name="description"/>
+<title>60 Second Solar Check | Energy With Mark</title>
+<meta content="Find out if solar could help your home, business or community facility in less than 60 seconds. Get a free initial solar savings estimate from Energy With Mark." name="description"/>
 <link href="styles.css" rel="stylesheet"/>
 <link href="homepage-v2.css" rel="stylesheet"/>
+<link href="quick-solar-check.css" rel="stylesheet"/>
 <meta content="Mark Fitzpatrick" name="author"/>
 <meta content="index,follow,max-image-preview:large" name="robots"/>
 <meta content="website" property="og:type"/>
-<meta content="Energy With Mark | Clear Solar & Battery Advice" property="og:title"/>
-<meta content="Understand your electricity use before choosing solar, a battery or your next energy upgrade." property="og:description"/>
+<meta content="Find out if solar can help you in less than 60 seconds | Energy With Mark" property="og:title"/>
+<meta content="Free Australian solar savings check. Enter a few simple details and get an immediate first estimate." property="og:description"/>
 <meta content="Energy With Mark" property="og:site_name"/>
 <link href="https://energywithmark.com.au/" rel="canonical"/>
 <meta content="https://energywithmark.com.au/" property="og:url"/>
@@ -19,79 +20,70 @@
 </head>
 <body class="public-v2">
 <header class="header"><div class="container nav">
-<a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>MARK FITZPATRICK · RENEWABLE ENERGY SPECIALIST</span></span></a>
+<a class="brand" href="index.html"><span class="brand-mark"></span><span class="brand-copy"><strong>ENERGY WITH MARK</strong><span>SOLAR • BATTERIES • ENERGY ADVICE</span></span></a>
 <button aria-label="Open menu" class="nav-toggle">☰</button>
-<nav class="nav-links"><a href="business.html">Business</a><a href="home.html">Home</a><a href="existing-solar.html">Existing Solar</a><a href="learn.html">Learn</a><a href="tools.html">Tools</a><a href="how-i-help.html">How I Help</a></nav>
-<a class="btn btn-primary" href="upload-bill.html">Start With My Bill</a>
+<nav class="nav-links"><a href="business.html">Business</a><a href="home.html">Home</a><a href="existing-solar.html">Existing Solar</a><a href="community.html">Clubs & Community</a><a href="learn.html">Learn</a><a href="how-i-help.html">About Mark</a></nav>
+<a class="btn btn-primary" href="#solar-check">60 Second Check</a>
 </div></header>
 <main>
-<section class="hero"><div class="container hero-grid">
+<section class="quick-hero" id="solar-check"><div class="container quick-hero-grid">
 <div>
-<div class="eyebrow">Solar • Batteries • Energy Advice</div>
-<h1>Make the right energy decision before you spend.</h1>
-<p class="lead">I help Australian homeowners, businesses and community organisations work out what actually makes sense — using your electricity bill, your property, your energy use and your goals.</p>
-<div class="btns"><a class="btn btn-primary" href="upload-bill.html">Start With My Electricity Bill</a><a class="btn btn-secondary" href="assessment.html">Start an Energy Assessment</a><a class="btn btn-ghost" href="book.html">Talk to Mark →</a></div>
-<div class="hero-proof"><span>Clear explanations</span><span>Options compared</span><span>No equipment-first approach</span></div>
+<div class="eyebrow">Free Australian solar check</div>
+<h1>Find out if solar can help you in <em>less than 60 seconds.</em></h1>
+<p class="lead">Enter a few simple details about your property and electricity bill. You’ll get an immediate first estimate of whether solar looks worth investigating and what it could potentially save.</p>
+<div class="quick-trust"><span>Free to use</span><span>No obligation</span><span>No solar knowledge needed</span><span>Initial result on screen</span></div>
+<p class="small" style="margin-top:18px">Already have solar? The check can also flag when your current system is better reviewed before you spend more.</p>
 </div>
-<div class="decision-panel" aria-label="How Energy With Mark approaches an energy decision">
-<div class="panel-label">A better starting point</div>
-<h2>Your system should follow the evidence.</h2>
-<div class="decision-flow">
-<div class="decision-step"><div class="num">1</div><div><strong>Understand the current position</strong><span>Bill, usage, tariffs, existing solar and site.</span></div></div>
-<div class="decision-step"><div class="num">2</div><div><strong>Work out what problem needs solving</strong><span>Costs, exports, evening use, growth or backup.</span></div></div>
-<div class="decision-step"><div class="num">3</div><div><strong>Compare sensible options</strong><span>Solar, battery, both, an upgrade — or no change.</span></div></div>
-<div class="decision-step"><div class="num">4</div><div><strong>Make the decision understandable</strong><span>Pricing, benefits, assumptions and next steps.</span></div></div>
+
+<div class="quick-shell">
+<div class="quick-shell-head"><div><div class="eyebrow">Your quick solar check</div><strong>Answer a few simple questions</strong></div><span class="time-badge">About 60 seconds</span></div>
+<div class="quick-progress" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
+<form id="quickSolarCheck" novalidate>
+<section class="quick-step active" data-step="1">
+<h2>What type of property is this?</h2><p class="quick-step-intro">Choose the closest match.</p>
+<div class="quick-options">
+<label class="quick-option"><input type="radio" name="quickProperty" value="home"><span><strong>Home</strong><small>House, townhouse or unit</small></span></label>
+<label class="quick-option"><input type="radio" name="quickProperty" value="business"><span><strong>Business</strong><small>Shop, office, workshop or warehouse</small></span></label>
+<label class="quick-option"><input type="radio" name="quickProperty" value="community"><span><strong>Club or community facility</strong><small>Sporting or community site</small></span></label>
+<label class="quick-option"><input type="radio" name="quickProperty" value="farm"><span><strong>Farm or rural property</strong><small>Agricultural or rural site</small></span></label>
 </div>
+<p class="quick-error" id="quickError1"></p>
+<div class="quick-actions end"><button class="btn btn-primary" id="quickNext1" type="button">Next →</button></div>
+</section>
+
+<section class="quick-step" data-step="2">
+<h2>Tell me about your electricity bill.</h2><p class="quick-step-intro">An estimate is fine. You do not need the bill in front of you.</p>
+<div class="quick-fields">
+<div class="quick-field"><span>Approximate bill amount</span><input id="quickBill" type="number" min="1" inputmode="decimal" placeholder="e.g. 650"></div>
+<div class="quick-field"><span>Bill frequency</span><select id="quickFrequency"><option value="quarterly">Per quarter</option><option value="monthly">Per month</option><option value="annual">Per year</option></select></div>
+<div class="quick-field"><span>Property postcode</span><input id="quickPostcode" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 3500"></div>
+<div class="quick-field"><span>Do you already have solar?</span><div class="quick-options" style="grid-template-columns:1fr 1fr"><label class="quick-option"><input type="radio" name="quickExistingSolar" value="no"><span style="min-height:49px;padding:11px 13px"><strong>No</strong></span></label><label class="quick-option"><input type="radio" name="quickExistingSolar" value="yes"><span style="min-height:49px;padding:11px 13px"><strong>Yes</strong></span></label></div></div>
 </div>
-</div></section>
-<div class="container trust-line"><span>Homes</span><span>Businesses</span><span>Existing Solar</span><span>Sporting Clubs &amp; Community</span></div>
+<p class="quick-error" id="quickError2"></p>
+<div class="quick-actions"><button class="quick-back" id="quickBack2" type="button">← Back</button><button class="btn btn-primary" id="quickCalculate" type="button">Show My Result →</button></div>
+</section>
 
-<section class="section"><div class="container">
-<div class="section-intro"><div class="eyebrow">Start with the problem</div><h2>What are you trying to work out?</h2><p class="lead">You do not need to know what size system you want. Choose the question closest to your situation and we can start there.</p></div>
-<div class="problem-grid">
-<a class="problem-card" href="home.html"><div class="problem-icon">⌂</div><h3>I want to reduce my home electricity costs</h3><p>Understand solar, battery options, future loads and what size may suit the household.</p><div class="link-end">Explore home energy →</div></a>
-<a class="problem-card" href="business.html"><div class="problem-icon">▦</div><h3>I want to improve my business energy costs</h3><p>Assess commercial solar and storage around operating hours, tariffs, demand and investment return.</p><div class="link-end">Explore business energy →</div></a>
-<a class="problem-card" href="existing-solar.html"><div class="problem-icon">☀</div><h3>I already have solar but my bills are still high</h3><p>Review exports, later grid use, inverter limits and whether more solar or a battery may help.</p><div class="link-end">Review existing solar →</div></a>
-<a class="problem-card" href="assessment.html"><div class="problem-icon">?</div><h3>I am not sure what I need</h3><p>Start with the information you already have and identify the next useful step without guessing.</p><div class="link-end">Start the assessment →</div></a>
+<section class="quick-step" data-step="3">
+<div class="quick-result"><span class="quick-result-label">Your initial result</span><h2 id="quickResultStatus">Solar looks worth investigating</h2><p id="quickResultText"></p><div class="quick-kpis"><div class="quick-kpi"><span>Possible starting solar size</span><strong id="quickSolarSize">—</strong></div><div class="quick-kpi"><span>Possible annual saving</span><strong id="quickSavingRange">—</strong></div><div class="quick-kpi"><span>Current annual bill</span><strong id="quickAnnualBill">—</strong></div></div><p class="quick-result-note">This is a fast planning estimate, not a quote or final system recommendation. A detailed assessment should use your real tariff, usage pattern, site conditions and existing equipment.</p></div>
+<div class="lead-unlock"><div id="quickLeadFields"><h3>Save your result and take the next step</h3><p id="quickLeadSummary">Enter your details and I can help you work out what to check next.</p><div class="quick-fields"><div class="quick-field"><span>Name</span><input id="quickName" autocomplete="name" placeholder="Your name"></div><div class="quick-field"><span>Mobile</span><input id="quickPhone" type="tel" autocomplete="tel" placeholder="04xx xxx xxx"></div><div class="quick-field full"><span>Email</span><input id="quickEmail" type="email" autocomplete="email" placeholder="you@example.com"></div></div><label class="quick-consent"><input id="quickConsent" type="checkbox"><span>I agree that Mark Fitzpatrick may contact me about this solar check. My details will be used for this enquiry. <a href="privacy.html" target="_blank" rel="noopener"><strong>Privacy notice</strong></a>.</span></label><p class="quick-error" id="quickLeadError"></p><div class="quick-actions"><button class="quick-back" id="quickBack3" type="button">← Change details</button><button class="btn btn-primary" id="quickLeadButton" type="button">Save My Result</button></div></div>
+<div class="quick-success hidden" id="quickSuccess"><strong>Your solar check has been saved.</strong><p>You can now continue to the detailed calculator for a fuller solar and battery comparison, or send a recent electricity bill for a more useful review.</p><div class="btns"><a class="btn btn-primary" id="detailedCalculatorLink" href="https://mfitz6849-create.github.io/solar-savings-calculator/">Use the Detailed Calculator</a><a class="btn btn-secondary" href="upload-bill.html">Send My Electricity Bill</a></div></div>
 </div>
-</div></section>
-
-<section class="section-sm"><div class="container"><div class="eyebrow">What you can expect</div><h2>Advice designed to make the decision clearer.</h2>
-<div class="value-strip">
-<div class="value-item"><strong>Start with your actual situation</strong><p>Your bill and energy use come before equipment choices.</p></div>
-<div class="value-item"><strong>Compare the useful options</strong><p>Solar-only, solar plus battery, upgrades and alternatives where relevant.</p></div>
-<div class="value-item"><strong>Understand the assumptions</strong><p>Know what the proposal depends on before you make a decision.</p></div>
-<div class="value-item"><strong>One adviser through the process</strong><p>I explain the proposal, coordinate the project and follow up after installation.</p></div>
-</div></div></section>
-
-<section class="section"><div class="container bill-band">
-<div><div class="eyebrow">The simplest useful first step</div><h2>Have an electricity bill? Start there.</h2><p class="lead" style="color:rgba(255,255,255,.84)">A recent bill can show how much electricity you use, what you pay, solar exports, tariffs and — for some businesses — demand charges. It gives us facts to work from instead of assumptions.</p><div class="btns"><a class="btn btn-primary" href="upload-bill.html">Send My Bill for Review</a><a class="btn btn-secondary" href="articles/why-i-need-your-electricity-bill.html">Why the bill matters</a></div></div>
-<div class="bill-points"><span>Usage and billing period</span><span>Rates and tariff structure</span><span>Solar exports where shown</span><span>Supply and demand charges</span><span>What information is still missing</span></div>
-</div></section>
-
-<section class="section-sm"><div class="container no-pressure">
-<div><div class="eyebrow">Not every answer is “buy more”</div><h2>The right outcome depends on the numbers.</h2><p class="lead">Sometimes solar is the strongest next step. Sometimes a battery solves a real problem. Sometimes the existing system is already doing what it should.</p></div>
-<div class="outcome-list">
-<div class="outcome"><strong>Solar may make sense</strong><p>When useful daytime generation can replace grid electricity and the site supports it.</p></div>
-<div class="outcome"><strong>A battery may make sense</strong><p>When useful solar surplus can replace expensive later grid use or solve another clear need.</p></div>
-<div class="outcome"><strong>No change may make sense</strong><p>If the numbers do not support another investment, that should be visible too.</p></div>
+</section>
+</form>
 </div>
 </div></section>
 
-<section class="section"><div class="container grid-2">
-<div><div class="eyebrow">How I work</div><h2>Understand → Recommend → Deliver → Support</h2><div class="process" style="grid-template-columns:1fr 1fr"><div class="step"><div class="step-num">1</div><h3>Understand</h3><p>Review the bill, usage, property, current system and goals.</p></div><div class="step"><div class="step-num">2</div><h3>Recommend</h3><p>Compare suitable options and explain pricing, benefits and assumptions.</p></div><div class="step"><div class="step-num">3</div><h3>Deliver</h3><p>Accepted projects move to the appropriate qualified installation partner.</p></div><div class="step"><div class="step-num">4</div><h3>Support</h3><p>I remain involved after installation and help keep questions or issues visible.</p></div></div></div>
-<div class="mark-note"><div class="eyebrow">About Mark</div><h2>One person to explain the decision.</h2><p>I work with homeowners, businesses, property owners, sporting clubs and community organisations considering solar, batteries and other energy solutions.</p><p><strong>My role is to make the technical and financial decision easier to understand.</strong></p><a class="btn btn-secondary" href="how-i-help.html">How I Help</a></div>
-</div></section>
+<section class="section-sm"><div class="container fast-proof"><div><strong>Fast first answer</strong><span>Find out whether solar appears worth a closer look without completing a long form.</span></div><div><strong>Built from your bill</strong><span>The estimate starts with what you already spend rather than a generic system advertisement.</span></div><div><strong>Detailed check available</strong><span>Move into the full calculator when you want solar, battery, incentives and long-term comparisons.</span></div><div><strong>Human help when needed</strong><span>Mark can review the bill and explain what the numbers mean in plain language.</span></div></div></section>
 
-<section class="section-sm"><div class="container grid-2">
-<div><div class="eyebrow">Useful first-look tool</div><h2>Solar &amp; Battery Fit Checker</h2><p class="lead">Get a simple indication of what may be worth investigating and what information is still missing. It deliberately avoids giving a false savings number from incomplete inputs.</p><a class="btn btn-secondary" href="tools.html">Use the Fit Checker</a></div>
-<div><div class="eyebrow">Popular questions</div><h2>Learn before you decide</h2><div class="article-list"><a class="article-link" href="articles/is-solar-worth-it-for-my-business.html">Is solar worth it for my business?</a><a class="article-link" href="articles/is-battery-worth-it-existing-solar.html">Is a battery worth it if I already have solar?</a><a class="article-link" href="articles/how-to-size-commercial-solar.html">What size solar system do I need?</a><a class="article-link" href="articles/more-solar-or-battery.html">More solar or a battery?</a><a class="article-link" href="articles/why-electricity-bill-high-with-solar.html">Why is my bill still high with solar?</a><a class="article-link" href="articles/what-good-commercial-solar-proposal-should-include.html">What should a solar proposal include?</a></div></div>
-</div></section>
+<section class="section"><div class="container detail-bridge"><div><div class="eyebrow" style="color:#C6E11A">Want the detailed numbers?</div><h2>The 60-second check is the start, not the final design.</h2><p>The full Solar Savings Calculator can compare grid-only, solar-only and solar-plus-battery scenarios, show longer-term estimates and create a personalised PDF report.</p><div class="btns"><a class="btn btn-primary" href="https://mfitz6849-create.github.io/solar-savings-calculator/">Open the Detailed Calculator</a><a class="btn btn-secondary" href="upload-bill.html">Start With My Bill</a></div></div><div class="detail-list"><span>Solar sizing estimate</span><span>Solar and battery comparison</span><span>Annual and long-term savings</span><span>Government support checks</span><span>Personalised PDF report</span></div></div></section>
 
-<section class="section dark"><div class="container"><div class="eyebrow" style="color:#C6E11A">Ready when you are</div><h2>Start with what you already know.</h2><p class="lead" style="color:rgba(255,255,255,.84)">You do not need to choose a system first. Send a bill, complete the assessment or request a time to talk through your options.</p><div class="btns"><a class="btn btn-primary" href="upload-bill.html">Start With My Bill</a><a class="btn btn-secondary" href="assessment.html">Energy Assessment</a><a class="btn btn-ghost" href="book.html" style="color:white">Talk to Mark →</a></div></div></section>
+<section class="section-sm"><div class="container"><div class="section-intro"><div class="eyebrow">Different situation?</div><h2>Choose the path that fits you.</h2></div><div class="problem-grid"><a class="problem-card" href="home.html"><div class="problem-icon">⌂</div><h3>Home solar & battery</h3><p>Understand what your household needs before choosing a system.</p><div class="link-end">Home energy →</div></a><a class="problem-card" href="business.html"><div class="problem-icon">▦</div><h3>Business energy</h3><p>Treat commercial solar and storage as an investment decision.</p><div class="link-end">Business energy →</div></a><a class="problem-card" href="existing-solar.html"><div class="problem-icon">☀</div><h3>Already have solar</h3><p>Review the current system before adding a battery, more panels or an inverter.</p><div class="link-end">Review existing solar →</div></a><a class="problem-card" href="community.html"><div class="problem-icon">◎</div><h3>Clubs & community</h3><p>Account for evening loads, site ownership, approvals and funding pathways.</p><div class="link-end">Community energy →</div></a></div></div></section>
+
+<section class="section"><div class="container explain-grid"><div><div class="eyebrow">Energy With Mark</div><h2>Clear advice after the calculator.</h2><p class="lead">A calculator can identify an opportunity. A good decision still needs the real bill, the site, the existing system and what you want the project to achieve.</p><div class="btns"><a class="btn btn-secondary" href="how-i-help.html">How I Help</a><a class="btn btn-ghost" href="book.html">Talk to Mark →</a></div></div><div class="mark-note"><p>“I don’t start with the equipment. I start with what you’re trying to achieve, then work out which option makes practical and financial sense.”</p><strong>Mark Fitzpatrick</strong><br><span class="small">Renewable Energy Specialist</span></div></div></section>
 </main>
-<footer class="footer"><div class="container footer-grid"><div><h3>Energy With Mark</h3><p>Solar • Batteries • Energy Advice</p><p>Mark Fitzpatrick · Renewable Energy Specialist</p><p><a href="tel:+61434151237">0434 151 237</a><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au">mark.fitzpatrick@classaenergy.com.au</a></p></div><div><h3>Explore</h3><p><a href="business.html">For Businesses</a><br/><a href="home.html">For Homeowners</a><br/><a href="community.html">Clubs &amp; Community</a><br/><a href="existing-solar.html">Existing Solar</a><br/><a href="learn.html">Knowledge Hub</a></p></div><div><h3>Start</h3><p><a href="upload-bill.html">Bill Review</a><br/><a href="assessment.html">Energy Assessment</a><br/><a href="tools.html">Fit Checker</a><br/><a href="book.html">Contact Mark</a></p></div></div><div class="container footer-small"><a href="service-relationship.html">Service &amp; relationship disclosure</a> · <a href="editorial-policy.html">Editorial &amp; advice approach</a> · <a href="privacy.html">Privacy notice</a></div></footer>
-<div class="mobile-cta"><a class="btn btn-primary" href="upload-bill.html">Start With My Bill</a></div>
+<footer class="footer"><div class="container footer-grid"><div><h3>Energy With Mark</h3><p>Mark Fitzpatrick · Renewable Energy Specialist</p><p><a href="tel:+61434151237">0434 151 237</a><br/><a href="mailto:mark.fitzpatrick@classaenergy.com.au">mark.fitzpatrick@classaenergy.com.au</a></p></div><div><h3>Explore</h3><p><a href="business.html">For Businesses</a><br/><a href="home.html">For Homeowners</a><br/><a href="community.html">Clubs & Community</a><br/><a href="existing-solar.html">Existing Solar</a><br/><a href="learn.html">Knowledge Hub</a></p></div><div><h3>Start</h3><p><a href="#solar-check">60 Second Solar Check</a><br/><a href="https://mfitz6849-create.github.io/solar-savings-calculator/">Detailed Calculator</a><br/><a href="upload-bill.html">Bill Review</a><br/><a href="book.html">Contact Mark</a></p></div></div><div class="container footer-small"><a href="service-relationship.html">Service & relationship disclosure</a> · <a href="editorial-policy.html">Editorial & advice approach</a> · <a href="privacy.html">Privacy notice</a></div></footer>
+<div class="mobile-cta"><a class="btn btn-primary" href="#solar-check">60 Second Solar Check</a></div>
 <script src="script.js"></script>
+<script src="quick-solar-check.js"></script>
 </body>
 </html>
