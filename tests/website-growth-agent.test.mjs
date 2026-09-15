@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -9,6 +10,8 @@ import {
   updateSitemapLastmod,
   validateProposal,
 } from "../scripts/website-growth-agent.mjs";
+
+const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 const safeProposal = {
   decision: "publish",
@@ -44,7 +47,7 @@ test("agent chooses only the first safe article without an enrichment marker", (
   assert.equal(chooseArticle(map), "articles/do-i-need-hybrid-inverter-for-battery.html");
 });
 
-test("Copilot prompt is grounded and explicitly denies risky claim classes and file edits", () => {
+test("growth prompt is grounded and explicitly denies risky claim classes and file edits", () => {
   const prompt = buildGrowthPrompt("articles/example.html", "<h1>Battery guide</h1><p>Use the existing energy profile.</p>");
   assert.match(prompt, /Use ONLY the supplied page text/);
   assert.match(prompt, /Do not use outside facts/);
@@ -84,4 +87,27 @@ test("discovery audit requires explicit AI search crawler, sitemap and AI site g
 
   const missing = auditStaticDiscovery({ robots: "User-agent: *\nAllow: /\n", sitemap: "", llms: "", articlePath });
   assert.ok(missing.length >= 4);
+});
+
+test("scheduled workflow uses private Business System AI with OIDC and bounded pull-request publishing", async () => {
+  const [workflow, ci, autoMerge, script] = await Promise.all([
+    read(".github/workflows/website-growth-agent.yml"),
+    read(".github/workflows/website-growth-agent-ci.yml"),
+    read(".github/workflows/website-growth-agent-automerge.yml"),
+    read("scripts/website-growth-agent.mjs"),
+  ]);
+  assert.match(workflow, /id-token: write/);
+  assert.match(workflow, /https:\/\/control\.energywithmark\.com\.au\/api\/website-growth\/prepare/);
+  assert.match(workflow, /--prepare-request/);
+  assert.match(workflow, /ewm-growth\/run-/);
+  assert.match(workflow, /gh workflow run website-growth-agent-ci\.yml/);
+  assert.doesNotMatch(workflow, /copilot/i);
+  assert.match(script, /DEFAULT_MODEL = "control-centre-workers-ai"/);
+  assert.match(script, /mode: "business-system-managed"/);
+  assert.match(ci, /workflow_dispatch:/);
+  assert.match(ci, /Independently verify a dispatched generated article diff/);
+  assert.match(autoMerge, /RUN_EVENT.*workflow_run\.event/s);
+  assert.match(autoMerge, /visible-article/);
+  assert.match(autoMerge, /pages\/builds/);
+  assert.match(autoMerge, /gh workflow run indexnow\.yml/);
 });

@@ -8,19 +8,23 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
+  pages: write
 
 jobs:
   merge-bounded-growth-pr:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
+      (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Find and verify the bounded Website Growth pull request
         id: verify
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
         run: |
           set -euo pipefail
           line="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
@@ -47,17 +51,45 @@ jobs:
           esac
 
           gh pr diff "$pr_number" --repo "$GITHUB_REPOSITORY" --name-only > /tmp/growth-paths.txt
-          test "$(wc -l < /tmp/growth-paths.txt | tr -d ' ')" = "1"
-          while IFS= read -r path; do
-            case "$path" in
-              robots.txt|llms.txt|sitemap.xml) ;;
-              *) echo "Refusing non-allowlisted Website Growth path: $path" >&2; exit 1 ;;
+          count="$(wc -l < /tmp/growth-paths.txt | tr -d ' ')"
+          mode=""
+
+          if [ "$count" = "1" ]; then
+            only_path="$(cat /tmp/growth-paths.txt)"
+            case "$only_path" in
+              robots.txt|llms.txt|sitemap.xml) mode="infrastructure" ;;
+              *) echo "Refusing non-allowlisted single-file Website Growth path: $only_path" >&2; exit 1 ;;
             esac
-          done < /tmp/growth-paths.txt
+          elif [ "$count" = "3" ]; then
+            if [ "$RUN_EVENT" != "workflow_dispatch" ]; then
+              echo "Visible Website Growth changes require independently dispatched CI." >&2
+              exit 1
+            fi
+            grep -Fxq "sitemap.xml" /tmp/growth-paths.txt
+            grep -Fxq "growth-agent-status.json" /tmp/growth-paths.txt
+            article="$(grep '^articles/.*\.html$' /tmp/growth-paths.txt || true)"
+            test -n "$article"
+            test "$(printf '%s\n' "$article" | wc -l | tr -d ' ')" = "1"
+            case "$article" in
+              articles/how-big-should-home-battery-be.html|\
+              articles/do-i-need-hybrid-inverter-for-battery.html|\
+              articles/does-battery-mean-whole-home-backup.html|\
+              articles/how-ev-changes-solar-sizing.html|\
+              articles/what-information-needed-for-solar-assessment.html|\
+              articles/what-is-solar-self-consumption.html|\
+              articles/why-i-need-your-electricity-bill.html) mode="visible-article" ;;
+              *) echo "Refusing non-allowlisted Website Growth article: $article" >&2; exit 1 ;;
+            esac
+          else
+            echo "Refusing Website Growth diff with $count changed paths." >&2
+            cat /tmp/growth-paths.txt >&2
+            exit 1
+          fi
 
           echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
 
-      - name: Merge only the verified low-risk pull request
+      - name: Merge only the independently verified low-risk pull request
         if: steps.verify.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,3 +97,28 @@ jobs:
         run: |
           set -euo pipefail
           gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --merge --delete-branch
+
+      - name: Request GitHub Pages rebuild after bounded merge
+        if: steps.verify.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/pages/builds" >/tmp/pages-build.json
+          echo "Requested GitHub Pages rebuild."
+
+      - name: Dispatch IndexNow after bounded merge
+        if: steps.verify.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run indexnow.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+      - name: Record bounded merge summary
+        if: steps.verify.outputs.pr_number != ''
+        run: |
+          {
+            echo "### Website Growth Agent Auto Merge"
+            echo "Merged verified mode: ${{ steps.verify.outputs.mode }}"
+            echo "Independent Website Growth CI passed before merge."
+            echo "GitHub Pages rebuild and IndexNow dispatch were requested after merge."
+          } >> "$GITHUB_STEP_SUMMARY"
