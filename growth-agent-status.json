@@ -1,18 +1,20 @@
 {
   "agent": "Website Growth Agent",
   "active": true,
-  "mode": "automatic-low-risk",
-  "lastRunAt": "2026-09-15T03:16:43.888Z",
-  "model": "github-copilot-auto",
-  "sourceSha": "baf4e3286d70b643617c72eb8d4670c401658df4",
+  "mode": "business-system-managed",
+  "activatedAt": "2026-09-15T03:32:15.893Z",
+  "lastRunAt": null,
+  "model": "Energy With Mark Business System AI",
+  "sourceSha": "a1186e741c5356b46d1f423b31911cfe6aea2178",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
     "legalClaimsAutoPublish": false,
     "customerWorkflowWrites": false,
-    "maxVisiblePagesPerRun": 1
+    "maxVisiblePagesPerRun": 1,
+    "reviewedPullRequestRequired": true
   },
-  "status": "model_error",
-  "lastAction": "AI response did not contain a JSON object.",
+  "status": "active_waiting_for_first_business_system_run",
+  "lastAction": "Activated through the Energy With Mark Business System. The blocked Copilot CLI inference path has been retired; GitHub Actions now provides read-only repository guardrails while the Business System AI agent performs bounded research, review and publishing through pull requests.",
   "lastChangedPath": null
 }

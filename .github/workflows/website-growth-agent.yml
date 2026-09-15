@@ -1,4 +1,4 @@
-name: Website Growth Agent
+name: Website Growth Agent Guardrails
 
 on:
   push:
@@ -10,195 +10,84 @@ on:
       - "growth-agent-status.json"
       - "llms.txt"
       - "robots.txt"
+      - "sitemap.xml"
+      - "articles/**"
   schedule:
     - cron: "30 20 * * 1,4"
   workflow_dispatch:
 
 permissions:
-  contents: write
-  copilot-requests: write
-  pages: write
+  contents: read
 
 concurrency:
-  group: website-growth-agent
+  group: website-growth-agent-guardrails
   cancel-in-progress: false
 
 jobs:
-  improve-site:
+  guardrails:
     runs-on: ubuntu-latest
     steps:
       - name: Check out public website
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Run safety tests before any AI-backed change
+      - name: Run Website Growth Agent safety tests
         run: node --test tests/website-growth-agent.test.mjs
 
-      - name: Install GitHub Copilot CLI
-        run: npm install -g @github/copilot
-
-      - name: Prepare bounded Website Growth prompt
-        run: node scripts/website-growth-agent.mjs --prepare-prompt "$RUNNER_TEMP/growth-agent-prompt.txt"
-
-      - name: Ask Copilot for grounded answer enrichment
-        id: copilot
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+      - name: Verify live discovery source
         shell: bash
         run: |
-          response_file="$RUNNER_TEMP/growth-agent-response.txt"
-          prompt_file="$RUNNER_TEMP/growth-agent-prompt.txt"
-          if [ ! -s "$prompt_file" ]; then
-            : > "$response_file"
-            echo "exit_code=0" >> "$GITHUB_OUTPUT"
-            echo "No remaining low-risk article candidate required AI preparation." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
+          node --input-type=module <<'NODE'
+          import fs from "node:fs/promises";
+          import { auditStaticDiscovery } from "./scripts/website-growth-agent.mjs";
 
-          set +e
-          copilot -p "$(cat "$prompt_file")" -s \
-            --deny-tool='write' \
-            --deny-tool='shell' \
-            > "$response_file" 2> "$RUNNER_TEMP/growth-agent-copilot-error.txt"
-          code=$?
-          set -e
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          if [ "$code" -ne 0 ]; then
-            echo "Copilot CLI failed safely with exit code $code." >> "$GITHUB_STEP_SUMMARY"
-            cat "$RUNNER_TEMP/growth-agent-copilot-error.txt" || true
-          fi
-          exit 0
+          const safeArticles = [
+            "articles/how-big-should-home-battery-be.html",
+            "articles/do-i-need-hybrid-inverter-for-battery.html",
+            "articles/does-battery-mean-whole-home-backup.html",
+            "articles/how-ev-changes-solar-sizing.html",
+            "articles/what-information-needed-for-solar-assessment.html",
+            "articles/what-is-solar-self-consumption.html",
+            "articles/why-i-need-your-electricity-bill.html"
+          ];
 
-      - name: Run Website Growth Agent safety gate
-        id: growth
-        env:
-          EWM_GROWTH_MODEL: github-copilot-auto
-          EWM_GROWTH_AI_RESPONSE_FILE: ${{ runner.temp }}/growth-agent-response.txt
-          EWM_GROWTH_OUTPUT_FILE: ${{ runner.temp }}/growth-agent-urls.txt
-        shell: bash
-        run: |
-          set +e
-          node scripts/website-growth-agent.mjs
-          code=$?
-          set -e
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          exit 0
+          const [robots, sitemap, llms, policyRaw, statusRaw] = await Promise.all([
+            fs.readFile("robots.txt", "utf8"),
+            fs.readFile("sitemap.xml", "utf8"),
+            fs.readFile("llms.txt", "utf8"),
+            fs.readFile("growth-agent-policy.json", "utf8"),
+            fs.readFile("growth-agent-status.json", "utf8")
+          ]);
 
-      - name: Re-run safety tests after agent preparation
-        run: node --test tests/website-growth-agent.test.mjs
+          const policy = JSON.parse(policyRaw);
+          const status = JSON.parse(statusRaw);
+          if (policy.agent !== "Website Growth Agent") throw new Error("Website Growth Agent policy identity is missing.");
+          if (status.agent !== "Website Growth Agent" || status.active !== true) throw new Error("Website Growth Agent is not marked active.");
 
-      - name: Commit bounded safe changes
-        id: commit
-        shell: bash
-        run: |
-          git add growth-agent-status.json sitemap.xml llms.txt robots.txt articles/*.html
-          if git diff --cached --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No Website Growth Agent repository change was produced." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          changed_paths="$(git diff --cached --name-only)"
-          disallowed="$(printf '%s\n' "$changed_paths" | grep -Ev '^(growth-agent-status\.json|sitemap\.xml|llms\.txt|robots\.txt|articles/[a-z0-9-]+\.html)$' || true)"
-          if [ -n "$disallowed" ]; then
-            echo "Blocked unexpected Website Growth Agent path(s):"
-            printf '%s\n' "$disallowed"
-            exit 1
-          fi
-
-          article_count="$(printf '%s\n' "$changed_paths" | grep -Ec '^articles/.+\.html$' || true)"
-          if [ "$article_count" -gt 1 ]; then
-            echo "Blocked: more than one visible article changed in a single agent run."
-            exit 1
-          fi
-
-          git config user.name "energy-with-mark-growth-agent[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Website Growth Agent: refresh discovery content"
-          git pull --rebase origin main
-          git push origin HEAD:main
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "### Website Growth Agent" >> "$GITHUB_STEP_SUMMARY"
-          echo "Committed bounded low-risk website changes:" >> "$GITHUB_STEP_SUMMARY"
-          printf '%s\n' "$changed_paths" | sed 's/^/- `/' | sed 's/$/`/' >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Request GitHub Pages rebuild for agent commit
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          code="$(curl -sS -o "$RUNNER_TEMP/pages-response.json" -w '%{http_code}' \
-            -L -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages/builds")"
-          cat "$RUNNER_TEMP/pages-response.json" || true
-          if [ "$code" != "201" ]; then
-            echo "GitHub Pages rebuild request failed with HTTP $code"
-            exit 1
-          fi
-
-      - name: Notify IndexNow of changed public answers
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          URL_FILE: ${{ runner.temp }}/growth-agent-urls.txt
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import urllib.error
-          import urllib.request
-
-          url_file = os.environ["URL_FILE"]
-          if not os.path.exists(url_file):
-              print("No changed public URL file; IndexNow skipped.")
-              raise SystemExit(0)
-          with open(url_file, "r", encoding="utf-8") as handle:
-              urls = list(dict.fromkeys(line.strip() for line in handle if line.strip()))
-          if not urls:
-              print("No changed public URLs; IndexNow skipped.")
-              raise SystemExit(0)
-
-          host = "energywithmark.com.au"
-          key = "11d89822f5f9c1126a8ae62d883c1210"
-          payload = {
-              "host": host,
-              "key": key,
-              "keyLocation": f"https://{host}/{key}.txt",
-              "urlList": urls,
+          const issues = [];
+          for (const articlePath of safeArticles) {
+            try {
+              await fs.access(articlePath);
+            } catch {
+              issues.push(`Missing safe article candidate: ${articlePath}`);
+              continue;
+            }
+            issues.push(...auditStaticDiscovery({ robots, sitemap, llms, articlePath }));
           }
-          request = urllib.request.Request(
-              "https://api.indexnow.org/indexnow",
-              data=json.dumps(payload).encode("utf-8"),
-              headers={"Content-Type": "application/json; charset=utf-8"},
-              method="POST",
-          )
-          try:
-              with urllib.request.urlopen(request, timeout=30) as response:
-                  status = response.status
-                  body = response.read().decode("utf-8", errors="replace")
-          except urllib.error.HTTPError as exc:
-              status = exc.code
-              body = exc.read().decode("utf-8", errors="replace")
-          print(f"IndexNow status: {status}; URLs: {len(urls)}")
-          if body:
-              print(body)
-          if status not in (200, 202):
-              raise SystemExit(f"IndexNow submission failed with HTTP {status}")
-          PY
+          const unique = [...new Set(issues)];
+          if (unique.length) throw new Error(`Discovery guardrail failed: ${unique.join("; ")}`);
+          console.log(`Website Growth Agent guardrails passed for ${safeArticles.length} evergreen article candidates.`);
+          NODE
 
-      - name: Preserve fail-safe AI status
-        if: steps.copilot.outputs.exit_code != '0' || steps.growth.outputs.exit_code != '0'
-        shell: bash
+      - name: Record guardrail summary
         run: |
-          echo "Website Growth Agent AI/runtime step failed safely. See growth-agent-status.json and logs." >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+          {
+            echo "### Website Growth Agent"
+            echo "Repository safety and discovery guardrails passed."
+            echo "AI research, review and bounded publishing are managed by the Energy With Mark Business System Website Growth Agent."
+            echo "This workflow has read-only repository authority and cannot publish customer-visible changes."
+          } >> "$GITHUB_STEP_SUMMARY"
