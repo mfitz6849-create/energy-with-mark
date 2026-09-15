@@ -1,0 +1,34 @@
+{
+  "agent": "Website Growth Agent",
+  "version": 1,
+  "purpose": "Improve discoverability and useful customer answers across conventional and AI-powered search without weakening factual, legal or customer-safety controls.",
+  "automatic_publish": {
+    "allowed": [
+      "crawlability and crawler guidance",
+      "sitemap and AI-readable site-map maintenance",
+      "grounded short-answer and FAQ enrichment of existing evergreen educational articles",
+      "safe metadata clarity improvements",
+      "internal links between existing public educational pages"
+    ],
+    "max_visible_pages_per_run": 1,
+    "grounding": "New visible wording must be supported entirely by the existing published page being improved.",
+    "cadence": "twice weekly plus explicit manual runs"
+  },
+  "approval_required": [
+    "government rebates, grants, incentives or eligibility",
+    "prices, savings, ROI, payback or financial forecasts",
+    "product specifications, warranties or availability",
+    "legal, privacy, compliance or contractual wording",
+    "contact details, forms, calculators, lead capture or customer workflows",
+    "new location landing pages",
+    "deleting or substantially changing an existing adviser-approved recommendation"
+  ],
+  "hard_rules": [
+    "Never invent facts, figures, customer results or testimonials.",
+    "Never create doorway or near-duplicate suburb pages.",
+    "Never change the calculator, bill upload, booking or lead-capture JavaScript automatically.",
+    "Never publish a time-sensitive energy-policy claim without a separate authoritative-source review path.",
+    "Fail closed when model output is malformed, ungrounded or contains blocked financial/time-sensitive claim language.",
+    "Keep Mark Fitzpatrick identified as the human adviser and author; AI supports publishing workflow but does not become the adviser of record."
+  ]
+}
