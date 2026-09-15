@@ -3,9 +3,9 @@
   "active": true,
   "mode": "business-system-managed",
   "activatedAt": "2026-09-15T03:32:15.893Z",
-  "lastRunAt": "2026-09-15T03:42:30.000Z",
-  "model": "Energy With Mark Business System AI",
-  "sourceSha": "946f5f6dccc432d9b0bab1fe3c362d0af7953076",
+  "lastRunAt": "2026-09-15T06:26:02.798Z",
+  "model": "ChatGPT Business System Automation",
+  "sourceSha": "e6675f84edd7913f89ad3a6b1416bfa8b0b1b89f",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -15,6 +15,6 @@
     "reviewedPullRequestRequired": true
   },
   "status": "published_low_risk",
-  "lastAction": "Improved the home battery sizing guide with a clearer search and AI-readable answer section plus FAQ structured data, using only facts already present on the published page. Updated the sitemap last-modified date for that article.",
-  "lastChangedPath": "articles/how-big-should-home-battery-be.html"
+  "lastAction": "Prepared a clearer search and AI-readable answer section plus FAQ structured data for the hybrid inverter guide, using only facts already present on the published page. Updated the sitemap date for that article.",
+  "lastChangedPath": "articles/do-i-need-hybrid-inverter-for-battery.html"
 }
