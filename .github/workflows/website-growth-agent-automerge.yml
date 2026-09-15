@@ -1,0 +1,67 @@
+name: Website Growth Agent Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["Website Growth Agent CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-bounded-growth-pr:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find and verify the bounded Website Growth pull request
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          line="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
+            --jq '.[] | select(.state == "open") | [.number, .head.ref, .title] | @tsv' | head -n 1)"
+          if [ -z "$line" ]; then
+            echo "No open pull request is associated with this successful Website Growth CI run."
+            exit 0
+          fi
+
+          pr_number="$(printf '%s' "$line" | cut -f1)"
+          branch="$(printf '%s' "$line" | cut -f2)"
+          title="$(printf '%s' "$line" | cut -f3-)"
+
+          case "$pr_number" in
+            ''|*[!0-9]*) echo "Invalid pull request number." >&2; exit 1 ;;
+          esac
+          case "$branch" in
+            ewm-growth/*) ;;
+            *) echo "Refusing non Website Growth branch: $branch" >&2; exit 1 ;;
+          esac
+          case "$title" in
+            "[Website Growth Agent] "*) ;;
+            *) echo "Refusing pull request without the Website Growth title prefix." >&2; exit 1 ;;
+          esac
+
+          gh pr diff "$pr_number" --repo "$GITHUB_REPOSITORY" --name-only > /tmp/growth-paths.txt
+          test "$(wc -l < /tmp/growth-paths.txt | tr -d ' ')" = "1"
+          while IFS= read -r path; do
+            case "$path" in
+              robots.txt|llms.txt|sitemap.xml) ;;
+              *) echo "Refusing non-allowlisted Website Growth path: $path" >&2; exit 1 ;;
+            esac
+          done < /tmp/growth-paths.txt
+
+          echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Merge only the verified low-risk pull request
+        if: steps.verify.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.verify.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --merge --delete-branch
