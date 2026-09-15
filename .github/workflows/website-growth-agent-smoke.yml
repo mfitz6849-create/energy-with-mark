@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/website-growth-agent-smoke.yml"
+      - ".github/workflows/website-growth-agent.yml"
+      - "scripts/website-growth-agent.mjs"
+      - "tests/website-growth-agent.test.mjs"
   workflow_dispatch:
 
 permissions:
