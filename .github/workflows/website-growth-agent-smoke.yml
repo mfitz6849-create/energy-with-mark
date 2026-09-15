@@ -1,0 +1,25 @@
+name: Website Growth Agent Smoke Trigger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/website-growth-agent-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch-growth-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch production Website Growth Agent
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run website-growth-agent.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "Dispatched the production Website Growth Agent on main."
