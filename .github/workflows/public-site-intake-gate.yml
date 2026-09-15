@@ -6,12 +6,14 @@ on:
     paths:
       - "*.html"
       - "*.js"
+      - "tests/public-intake-runtime.test.mjs"
       - ".github/workflows/public-site-intake-gate.yml"
   push:
     branches: [main]
     paths:
       - "*.html"
       - "*.js"
+      - "tests/public-intake-runtime.test.mjs"
       - ".github/workflows/public-site-intake-gate.yml"
   workflow_dispatch:
 
@@ -39,6 +41,9 @@ jobs:
           node --check conversion-v1-base.js
           node --check quick-solar-check.js
           node --check calculator-v2.js
+
+      - name: Run behavioral public intake regression tests
+        run: node --test tests/public-intake-runtime.test.mjs
 
       - name: Verify acknowledgement contracts remain present
         run: |
