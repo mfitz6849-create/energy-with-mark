@@ -2,10 +2,9 @@
   "agent": "Website Growth Agent",
   "active": true,
   "mode": "business-system-managed",
-  "activatedAt": "2026-09-15T03:32:15.893Z",
-  "lastRunAt": "2026-09-15T06:26:02.798Z",
+  "lastRunAt": "2026-09-15T06:48:48.628Z",
   "model": "ChatGPT Business System Automation",
-  "sourceSha": "e6675f84edd7913f89ad3a6b1416bfa8b0b1b89f",
+  "sourceSha": "43745938df29d060a969cec3e17f0ebf11e76de2",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -15,6 +14,7 @@
     "reviewedPullRequestRequired": true
   },
   "status": "published_low_risk",
-  "lastAction": "Prepared a clearer search and AI-readable answer section plus FAQ structured data for the hybrid inverter guide, using only facts already present on the published page. Updated the sitemap date for that article.",
-  "lastChangedPath": "articles/do-i-need-hybrid-inverter-for-battery.html"
+  "lastAction": "Added grounded answer and FAQ enrichment to articles/does-battery-mean-whole-home-backup.html.",
+  "lastChangedPath": "articles/does-battery-mean-whole-home-backup.html",
+  "reason": "Clarifies the difference between stored energy and backup power using only the article's existing guidance."
 }
