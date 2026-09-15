@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   applyGrowthBlock,
   auditStaticDiscovery,
+  buildGrowthPrompt,
   chooseArticle,
   updateSitemapLastmod,
   validateProposal,
@@ -41,6 +42,15 @@ test("agent chooses only the first safe article without an enrichment marker", (
     ["articles/does-battery-mean-whole-home-backup.html", "<html>candidate two</html>"]
   ]);
   assert.equal(chooseArticle(map), "articles/do-i-need-hybrid-inverter-for-battery.html");
+});
+
+test("Copilot prompt is grounded and explicitly denies risky claim classes and file edits", () => {
+  const prompt = buildGrowthPrompt("articles/example.html", "<h1>Battery guide</h1><p>Use the existing energy profile.</p>");
+  assert.match(prompt, /Use ONLY the supplied page text/);
+  assert.match(prompt, /Do not use outside facts/);
+  assert.match(prompt, /Do not add prices, savings, payback, ROI, tariffs, rebates, grants, incentives/);
+  assert.match(prompt, /Do not edit files and do not use tools/);
+  assert.match(prompt, /Battery guide Use the existing energy profile/);
 });
 
 test("agent inserts a visible answer block and FAQ structured data", () => {
