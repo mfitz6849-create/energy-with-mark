@@ -1,7 +1,13 @@
 {
   "agent": "Website Growth Agent",
-  "version": 1,
+  "version": 2,
   "purpose": "Improve discoverability and useful customer answers across conventional and AI-powered search without weakening factual, legal or customer-safety controls.",
+  "runtime": {
+    "primary": "Energy With Mark Business System scheduled Website Growth Agent",
+    "repository_guardrails": "GitHub Actions read-only verification",
+    "cadence": "daily business-system review plus repository guardrails twice weekly and on relevant pushes",
+    "change_process": "reviewed branch and pull request, safety/CI checks, diff review, merge, deployment verification and indexing/discovery verification"
+  },
   "automatic_publish": {
     "allowed": [
       "crawlability and crawler guidance",
@@ -11,8 +17,8 @@
       "internal links between existing public educational pages"
     ],
     "max_visible_pages_per_run": 1,
-    "grounding": "New visible wording must be supported entirely by the existing published page being improved.",
-    "cadence": "twice weekly plus explicit manual runs"
+    "grounding": "New visible wording must be supported by the current published site and, when outside facts are required, authoritative sources reviewed in the same run.",
+    "cadence": "at most one meaningful low-risk visible improvement per business-system run"
   },
   "approval_required": [
     "government rebates, grants, incentives or eligibility",
@@ -29,6 +35,7 @@
     "Never change the calculator, bill upload, booking or lead-capture JavaScript automatically.",
     "Never publish a time-sensitive energy-policy claim without a separate authoritative-source review path.",
     "Fail closed when model output is malformed, ungrounded or contains blocked financial/time-sensitive claim language.",
-    "Keep Mark Fitzpatrick identified as the human adviser and author; AI supports publishing workflow but does not become the adviser of record."
+    "Keep Mark Fitzpatrick identified as the human adviser and author; AI supports publishing workflow but does not become the adviser of record.",
+    "Repository guardrails remain read-only; customer-visible publishing must come through the Business System agent change process."
   ]
 }
