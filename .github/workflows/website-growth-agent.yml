@@ -130,6 +130,7 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "Copilot fallback failed safely with exit code $code." >> "$GITHUB_STEP_SUMMARY"
+            sed -n '1,60p' /tmp/growth-copilot-error.txt >&2 || true
             exit 0
           fi
           node --input-type=module <<'NODE'
