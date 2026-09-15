@@ -101,7 +101,10 @@ test("scheduled workflow uses private Business System AI with OIDC and bounded p
   assert.match(workflow, /--prepare-request/);
   assert.match(workflow, /ewm-growth\/run-/);
   assert.match(workflow, /gh workflow run website-growth-agent-ci\.yml/);
-  assert.doesNotMatch(workflow, /copilot/i);
+  assert.match(workflow, /copilot-requests: write/);
+  assert.match(workflow, /Install GitHub Copilot CLI fallback/);
+  assert.match(workflow, /steps\.business_system\.outputs\.available != 'true'/);
+  assert.match(workflow, /github-copilot-auto-fallback/);
   assert.match(script, /DEFAULT_MODEL = "control-centre-workers-ai"/);
   assert.match(script, /mode: "business-system-managed"/);
   assert.match(ci, /workflow_dispatch:/);
