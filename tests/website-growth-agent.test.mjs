@@ -52,6 +52,8 @@ test("growth prompt is grounded and explicitly denies risky claim classes and fi
   assert.match(prompt, /Use ONLY the supplied page text/);
   assert.match(prompt, /Do not use outside facts/);
   assert.match(prompt, /Do not add prices, savings, payback, ROI, tariffs, rebates, grants, incentives/);
+  assert.match(prompt, /do not place any digits/);
+  assert.match(prompt, /do not use these words: price, cost, saving, savings/);
   assert.match(prompt, /Do not edit files and do not use tools/);
   assert.match(prompt, /Battery guide Use the existing energy profile/);
 });
