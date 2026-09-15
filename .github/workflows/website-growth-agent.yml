@@ -1,0 +1,169 @@
+name: Website Growth Agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/website-growth-agent.yml"
+      - "scripts/website-growth-agent.mjs"
+      - "growth-agent-policy.json"
+      - "growth-agent-status.json"
+      - "llms.txt"
+      - "robots.txt"
+  schedule:
+    - cron: "30 20 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  models: read
+  pages: write
+
+concurrency:
+  group: website-growth-agent
+  cancel-in-progress: false
+
+jobs:
+  improve-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out public website
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run safety tests before any model-backed change
+        run: node --test tests/website-growth-agent.test.mjs
+
+      - name: Run Website Growth Agent
+        id: growth
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EWM_GROWTH_MODEL: openai/gpt-5-mini
+          EWM_GROWTH_OUTPUT_FILE: ${{ runner.temp }}/growth-agent-urls.txt
+        shell: bash
+        run: |
+          set +e
+          node scripts/website-growth-agent.mjs
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Re-run safety tests after agent preparation
+        run: node --test tests/website-growth-agent.test.mjs
+
+      - name: Commit bounded safe changes
+        id: commit
+        shell: bash
+        run: |
+          git add growth-agent-status.json sitemap.xml llms.txt robots.txt articles/*.html
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No Website Growth Agent repository change was produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          changed_paths="$(git diff --cached --name-only)"
+          disallowed="$(printf '%s\n' "$changed_paths" | grep -Ev '^(growth-agent-status\.json|sitemap\.xml|llms\.txt|robots\.txt|articles/[a-z0-9-]+\.html)$' || true)"
+          if [ -n "$disallowed" ]; then
+            echo "Blocked unexpected Website Growth Agent path(s):"
+            printf '%s\n' "$disallowed"
+            exit 1
+          fi
+
+          article_count="$(printf '%s\n' "$changed_paths" | grep -Ec '^articles/.+\.html$' || true)"
+          if [ "$article_count" -gt 1 ]; then
+            echo "Blocked: more than one visible article changed in a single agent run."
+            exit 1
+          fi
+
+          git config user.name "energy-with-mark-growth-agent[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Website Growth Agent: refresh discovery content"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "### Website Growth Agent" >> "$GITHUB_STEP_SUMMARY"
+          echo "Committed bounded low-risk website changes:" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$changed_paths" | sed 's/^/- `/' | sed 's/$/`/' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Request GitHub Pages rebuild for agent commit
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          code="$(curl -sS -o "$RUNNER_TEMP/pages-response.json" -w '%{http_code}' \
+            -L -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages/builds")"
+          cat "$RUNNER_TEMP/pages-response.json" || true
+          if [ "$code" != "201" ]; then
+            echo "GitHub Pages rebuild request failed with HTTP $code"
+            exit 1
+          fi
+
+      - name: Notify IndexNow of changed public answers
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          URL_FILE: ${{ runner.temp }}/growth-agent-urls.txt
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          url_file = os.environ["URL_FILE"]
+          if not os.path.exists(url_file):
+              print("No changed public URL file; IndexNow skipped.")
+              raise SystemExit(0)
+          with open(url_file, "r", encoding="utf-8") as handle:
+              urls = list(dict.fromkeys(line.strip() for line in handle if line.strip()))
+          if not urls:
+              print("No changed public URLs; IndexNow skipped.")
+              raise SystemExit(0)
+
+          host = "energywithmark.com.au"
+          key = "11d89822f5f9c1126a8ae62d883c1210"
+          payload = {
+              "host": host,
+              "key": key,
+              "keyLocation": f"https://{host}/{key}.txt",
+              "urlList": urls,
+          }
+          request = urllib.request.Request(
+              "https://api.indexnow.org/indexnow",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json; charset=utf-8"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  status = response.status
+                  body = response.read().decode("utf-8", errors="replace")
+          except urllib.error.HTTPError as exc:
+              status = exc.code
+              body = exc.read().decode("utf-8", errors="replace")
+          print(f"IndexNow status: {status}; URLs: {len(urls)}")
+          if body:
+              print(body)
+          if status not in (200, 202):
+              raise SystemExit(f"IndexNow submission failed with HTTP {status}")
+          PY
+
+      - name: Preserve fail-safe model status
+        if: steps.growth.outputs.exit_code != '0'
+        shell: bash
+        run: |
+          echo "Website Growth Agent model/runtime step failed safely. See growth-agent-status.json and logs." >> "$GITHUB_STEP_SUMMARY"
+          exit 1
