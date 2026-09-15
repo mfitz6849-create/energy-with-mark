@@ -2,17 +2,17 @@
   "agent": "Website Growth Agent",
   "active": true,
   "mode": "automatic-low-risk",
-  "status": "activated_pending_first_run",
-  "lastRunAt": null,
-  "lastAction": "Agent installed; first scheduled or post-merge run pending.",
-  "lastChangedPath": null,
+  "lastRunAt": "2026-09-15T03:13:11.946Z",
   "model": "openai/gpt-5-mini",
-  "sourceSha": null,
+  "sourceSha": "73911b9f638dd7cfc54571472d36d207d03b1026",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
     "legalClaimsAutoPublish": false,
     "customerWorkflowWrites": false,
     "maxVisiblePagesPerRun": 1
-  }
+  },
+  "status": "model_error",
+  "lastAction": "GitHub Models request failed with HTTP 410: {\"error\":{\"code\":\"github_models_retirement_brownout\",\"message\":\"GitHub Models is temporarily unavailable as part of a scheduled retirement brownout.\"}}\n",
+  "lastChangedPath": null
 }
