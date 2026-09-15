@@ -37,6 +37,8 @@ jobs:
     steps:
       - name: Check out site
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -53,3 +55,66 @@ jobs:
           grep -q '"legalClaimsAutoPublish": false' growth-agent-status.json
           grep -q '"customerWorkflowWrites": false' growth-agent-status.json
           grep -q '"maxVisiblePagesPerRun": 1' growth-agent-status.json
+
+      - name: Independently verify a dispatched generated article diff
+        if: github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'ewm-growth/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          base="$(git merge-base HEAD origin/main)"
+          git diff --name-only "$base" HEAD > /tmp/growth-ci-paths.txt
+          cat /tmp/growth-ci-paths.txt
+          test "$(wc -l < /tmp/growth-ci-paths.txt | tr -d ' ')" = "3"
+          grep -Fxq "sitemap.xml" /tmp/growth-ci-paths.txt
+          grep -Fxq "growth-agent-status.json" /tmp/growth-ci-paths.txt
+          article="$(grep '^articles/.*\.html$' /tmp/growth-ci-paths.txt || true)"
+          test -n "$article"
+          test "$(printf '%s\n' "$article" | wc -l | tr -d ' ')" = "1"
+          case "$article" in
+            articles/how-big-should-home-battery-be.html|\
+            articles/do-i-need-hybrid-inverter-for-battery.html|\
+            articles/does-battery-mean-whole-home-backup.html|\
+            articles/how-ev-changes-solar-sizing.html|\
+            articles/what-information-needed-for-solar-assessment.html|\
+            articles/what-is-solar-self-consumption.html|\
+            articles/why-i-need-your-electricity-bill.html) ;;
+            *) echo "Refusing non-allowlisted generated article: $article" >&2; exit 1 ;;
+          esac
+          git show "$base:$article" > /tmp/base-article.html
+          git show "$base:sitemap.xml" > /tmp/base-sitemap.xml
+          ARTICLE="$article" node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { applyGrowthBlock, updateSitemapLastmod, validateProposal } from "./scripts/website-growth-agent.mjs";
+
+          const article = process.env.ARTICLE;
+          const base = fs.readFileSync("/tmp/base-article.html", "utf8");
+          const changed = fs.readFileSync(article, "utf8");
+          const decode = (value) => String(value)
+            .replaceAll("&lt;", "<")
+            .replaceAll("&gt;", ">")
+            .replaceAll("&quot;", '"')
+            .replaceAll("&#39;", "'")
+            .replaceAll("&amp;", "&");
+          const block = changed.match(/<!-- EWM-GROWTH:START --><div class="example-box ewm-growth-answer"><h2>What matters most<\/h2><p>([\s\S]*?)<\/p><ul>([\s\S]*?)<\/ul><h2>Common questions<\/h2>([\s\S]*?)<\/div><!-- EWM-GROWTH:END -->/);
+          if (!block) throw new Error("Generated Website Growth block is missing or malformed.");
+          const whatMatters = [...block[2].matchAll(/<li>([\s\S]*?)<\/li>/g)].map((match) => decode(match[1]));
+          const faq = [...block[3].matchAll(/<h3>([\s\S]*?)<\/h3><p>([\s\S]*?)<\/p>/g)].map((match) => ({ q: decode(match[1]), a: decode(match[2]) }));
+          const proposal = { decision: "publish", summary: decode(block[1]), whatMatters, faq, reason: "Independent generated-diff verification." };
+          const validation = validateProposal(proposal);
+          if (!validation.ok) throw new Error(`Generated article failed proposal validation: ${validation.reason}`);
+          const dateMatch = changed.match(/<meta content="(\d{4}-\d{2}-\d{2})" property="article:modified_time"\/>/i);
+          if (!dateMatch) throw new Error("Generated article modified date is missing.");
+          const today = dateMatch[1];
+          const expectedArticle = applyGrowthBlock(base, proposal, today);
+          if (expectedArticle !== changed) throw new Error("Generated article contains changes outside the deterministic Website Growth transformation.");
+          const baseSitemap = fs.readFileSync("/tmp/base-sitemap.xml", "utf8");
+          const currentSitemap = fs.readFileSync("sitemap.xml", "utf8");
+          const expectedSitemap = updateSitemapLastmod(baseSitemap, article, today);
+          if (expectedSitemap !== currentSitemap) throw new Error("Sitemap contains changes outside the target article last-modified update.");
+          const status = JSON.parse(fs.readFileSync("growth-agent-status.json", "utf8"));
+          if (status.status !== "published_low_risk" || status.lastChangedPath !== article) throw new Error("Growth status does not match the generated article.");
+          if (status.safety?.financialClaimsAutoPublish !== false || status.safety?.incentiveClaimsAutoPublish !== false || status.safety?.legalClaimsAutoPublish !== false || status.safety?.customerWorkflowWrites !== false) throw new Error("Growth status safety flags were widened.");
+          if (status.safety?.maxVisiblePagesPerRun !== 1 || status.safety?.reviewedPullRequestRequired !== true) throw new Error("Growth status publishing boundary is invalid.");
+          console.log(`Independent generated-diff verification passed for ${article}.`);
+          NODE
