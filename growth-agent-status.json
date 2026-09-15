@@ -2,9 +2,9 @@
   "agent": "Website Growth Agent",
   "active": true,
   "mode": "business-system-managed",
-  "lastRunAt": "2026-09-15T06:48:48.628Z",
-  "model": "ChatGPT Business System Automation",
-  "sourceSha": "43745938df29d060a969cec3e17f0ebf11e76de2",
+  "lastRunAt": "2026-09-15T23:01:49.000Z",
+  "model": "ChatGPT GitHub Connector Fallback",
+  "sourceSha": "85dc3dbae7faa87c33bf5437633dde123191c2cd",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -14,7 +14,7 @@
     "reviewedPullRequestRequired": true
   },
   "status": "published_low_risk",
-  "lastAction": "Added grounded answer and FAQ enrichment to articles/does-battery-mean-whole-home-backup.html.",
-  "lastChangedPath": "articles/does-battery-mean-whole-home-backup.html",
-  "reason": "Clarifies the difference between stored energy and backup power using only the article's existing guidance."
+  "lastAction": "Added grounded answer and FAQ enrichment to articles/how-ev-changes-solar-sizing.html.",
+  "lastChangedPath": "articles/how-ev-changes-solar-sizing.html",
+  "reason": "Clarifies how travel, charging time and daytime solar availability should guide solar and battery sizing using only the article’s existing guidance."
 }
