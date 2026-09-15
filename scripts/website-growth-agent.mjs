@@ -3,8 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const ROOT = process.cwd();
-const MODEL_ENDPOINT = "https://models.github.ai/inference/chat/completions";
-const DEFAULT_MODEL = "openai/gpt-5-mini";
+const DEFAULT_MODEL = "github-copilot-auto";
 const SAFE_ARTICLES = [
   "articles/how-big-should-home-battery-be.html",
   "articles/do-i-need-hybrid-inverter-for-battery.html",
@@ -44,12 +43,12 @@ export function extractJson(text) {
   const unfenced = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   const start = unfenced.indexOf("{");
   const end = unfenced.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("Model response did not contain a JSON object.");
+  if (start < 0 || end <= start) throw new Error("AI response did not contain a JSON object.");
   return JSON.parse(unfenced.slice(start, end + 1));
 }
 
 export function validateProposal(proposal) {
-  if (!proposal || proposal.decision !== "publish") return { ok: false, reason: "Model did not return a publish decision." };
+  if (!proposal || proposal.decision !== "publish") return { ok: false, reason: "AI did not return a publish decision." };
   if (typeof proposal.summary !== "string" || proposal.summary.length < 70 || proposal.summary.length > 650) {
     return { ok: false, reason: "Summary length is outside the allowed range." };
   }
@@ -78,8 +77,14 @@ export function chooseArticle(articleMap) {
   return null;
 }
 
+export function buildGrowthPrompt(articlePath, articleHtml) {
+  const articleText = stripHtml(articleHtml).slice(0, 18000);
+  return `You are the Energy With Mark Website Growth Agent. Improve one existing Australian solar/battery educational page for conventional search and AI-powered search. You are not allowed to invent facts. Use ONLY the supplied page text below. Do not use outside facts even if you know them. Do not add prices, savings, payback, ROI, tariffs, rebates, grants, incentives, government-program details, product specifications, legal claims, customer-specific advice, testimonials or numeric claims. Keep language simple, useful and natural. Avoid keyword stuffing and avoid near-duplicate/location doorway content. Mark Fitzpatrick remains the human adviser and author. Do not edit files and do not use tools; return the answer only. Return JSON only with this exact shape: {"decision":"publish"|"no_change","summary":"...","whatMatters":["...","...","..."],"faq":[{"q":"...","a":"..."},{"q":"...","a":"..."}],"reason":"..."}. If the page cannot be safely improved from its own text, return decision no_change.\n\nPage path: ${articlePath}\n\nPublished page text:\n${articleText}`;
+}
+
 export function applyGrowthBlock(html, proposal, today) {
-  const quickAnswerClose = html.indexOf("</div>", html.indexOf('class="quick-answer"'));
+  const quickAnswerStart = html.indexOf('class="quick-answer"');
+  const quickAnswerClose = quickAnswerStart >= 0 ? html.indexOf("</div>", quickAnswerStart) : -1;
   if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
   const insertionPoint = quickAnswerClose + "</div>".length;
   const matters = proposal.whatMatters.map((item) => `<li>${htmlEscape(item)}</li>`).join("");
@@ -120,39 +125,7 @@ export function auditStaticDiscovery({ robots, sitemap, llms, articlePath }) {
   return issues;
 }
 
-async function callModel({ token, model, articlePath, articleHtml }) {
-  const articleText = stripHtml(articleHtml).slice(0, 18000);
-  const system = `You are the Energy With Mark Website Growth Agent. Improve one existing Australian solar/battery educational page for conventional search and AI-powered search. You are not allowed to invent facts. Use ONLY the supplied page text. Do not add prices, savings, payback, ROI, tariffs, rebates, grants, incentives, government-program details, product specifications, legal claims, customer-specific advice, testimonials or numeric claims. Keep language simple, useful and natural. Avoid keyword stuffing and avoid near-duplicate/location doorway content. Mark Fitzpatrick remains the human adviser and author. Return JSON only with this exact shape: {"decision":"publish"|"no_change","summary":"...","whatMatters":["...","...","..."],"faq":[{"q":"...","a":"..."},{"q":"...","a":"..."}],"reason":"..."}. If the page cannot be safely improved from its own text, return decision no_change.`;
-  const user = `Page path: ${articlePath}\n\nPublished page text:\n${articleText}`;
-  const response = await fetch(MODEL_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "Accept": "application/vnd.github+json"
-    },
-    body: JSON.stringify({ model, messages: [{ role: "system", content: system }, { role: "user", content: user }] })
-  });
-  if (!response.ok) throw new Error(`GitHub Models request failed with HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-  const payload = await response.json();
-  const text = payload?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("GitHub Models returned no message content.");
-  return extractJson(text);
-}
-
-async function writeStatus(status) {
-  await fs.writeFile(path.join(ROOT, "growth-agent-status.json"), JSON.stringify(status, null, 2) + "\n", "utf8");
-}
-
-async function main() {
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (!token) throw new Error("GITHUB_TOKEN is required for the Website Growth Agent runtime.");
-  const model = process.env.EWM_GROWTH_MODEL || DEFAULT_MODEL;
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const sourceSha = process.env.GITHUB_SHA || null;
-  const outputFile = process.env.EWM_GROWTH_OUTPUT_FILE || null;
-
+async function loadArticleMap() {
   const articleMap = new Map();
   for (const articlePath of SAFE_ARTICLES) {
     try {
@@ -161,6 +134,32 @@ async function main() {
       // Candidate may be absent in a future site revision; skip it safely.
     }
   }
+  return articleMap;
+}
+
+async function preparePrompt(outputPath) {
+  const articleMap = await loadArticleMap();
+  const articlePath = chooseArticle(articleMap);
+  if (!articlePath) {
+    await fs.writeFile(outputPath, "", "utf8");
+    return;
+  }
+  await fs.writeFile(outputPath, buildGrowthPrompt(articlePath, articleMap.get(articlePath)), "utf8");
+}
+
+async function writeStatus(status) {
+  await fs.writeFile(path.join(ROOT, "growth-agent-status.json"), JSON.stringify(status, null, 2) + "\n", "utf8");
+}
+
+async function main() {
+  const model = process.env.EWM_GROWTH_MODEL || DEFAULT_MODEL;
+  const responseFile = process.env.EWM_GROWTH_AI_RESPONSE_FILE || null;
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const sourceSha = process.env.GITHUB_SHA || null;
+  const outputFile = process.env.EWM_GROWTH_OUTPUT_FILE || null;
+
+  const articleMap = await loadArticleMap();
   const articlePath = chooseArticle(articleMap);
   const baseStatus = {
     agent: "Website Growth Agent",
@@ -186,9 +185,11 @@ async function main() {
 
   let proposal;
   try {
-    proposal = await callModel({ token, model, articlePath, articleHtml: articleMap.get(articlePath) });
+    if (!responseFile) throw new Error("No bounded Copilot response file was provided.");
+    const responseText = await fs.readFile(responseFile, "utf8");
+    proposal = extractJson(responseText);
   } catch (error) {
-    await writeStatus({ ...baseStatus, status: "model_error", lastAction: error instanceof Error ? error.message : "Unknown model error", lastChangedPath: null });
+    await writeStatus({ ...baseStatus, status: "model_error", lastAction: error instanceof Error ? error.message : "Unknown AI response error", lastChangedPath: null });
     if (outputFile) await fs.writeFile(outputFile, "", "utf8");
     throw error;
   }
@@ -231,8 +232,22 @@ async function main() {
 
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (invokedDirectly) {
-  main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+  const promptIndex = process.argv.indexOf("--prepare-prompt");
+  if (promptIndex >= 0) {
+    const outputPath = process.argv[promptIndex + 1];
+    if (!outputPath) {
+      console.error("--prepare-prompt requires an output path");
+      process.exitCode = 1;
+    } else {
+      preparePrompt(outputPath).catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+      });
+    }
+  } else {
+    main().catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+  }
 }
