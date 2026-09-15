@@ -1,0 +1,64 @@
+name: Website Growth Agent Scheduler
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00 Melbourne is 21:00 UTC during AEDT and 22:00 UTC during AEST.
+    # Both UTC candidates run; the timezone gate below dispatches exactly one.
+    - cron: "0 21 * * *"
+    - cron: "0 22 * * *"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: website-growth-agent-scheduler
+  cancel-in-progress: false
+
+jobs:
+  dispatch-native-growth-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Gate scheduled run to 08:00 Australia/Melbourne
+        id: gate
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULED_CRON: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          offset="$(TZ=Australia/Melbourne date +%z)"
+          should_dispatch=false
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            should_dispatch=true
+          elif [ "$SCHEDULED_CRON" = "0 21 * * *" ] && [ "$offset" = "+1100" ]; then
+            should_dispatch=true
+          elif [ "$SCHEDULED_CRON" = "0 22 * * *" ] && [ "$offset" = "+1000" ]; then
+            should_dispatch=true
+          fi
+
+          echo "should_dispatch=$should_dispatch" >> "$GITHUB_OUTPUT"
+          echo "melbourne_offset=$offset" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch the proven bounded Website Growth Agent
+        if: steps.gate.outputs.should_dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run website-growth-agent.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+      - name: Record scheduler result
+        shell: bash
+        run: |
+          {
+            echo "### Website Growth Agent Scheduler"
+            echo "Event: ${{ github.event_name }}"
+            echo "Melbourne offset: ${{ steps.gate.outputs.melbourne_offset }}"
+            if [ "${{ steps.gate.outputs.should_dispatch }}" = "true" ]; then
+              echo "Dispatched the existing bounded Website Growth Agent on main."
+            else
+              echo "No dispatch: this UTC schedule is the inactive daylight-saving counterpart."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
