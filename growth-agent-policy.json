@@ -1,12 +1,12 @@
 {
   "agent": "Website Growth Agent",
-  "version": 2,
+  "version": 3,
   "purpose": "Improve discoverability and useful customer answers across conventional and AI-powered search without weakening factual, legal or customer-safety controls.",
   "runtime": {
-    "primary": "Energy With Mark Business System scheduled Website Growth Agent",
-    "repository_guardrails": "GitHub Actions read-only verification",
-    "cadence": "daily business-system review plus repository guardrails twice weekly and on relevant pushes",
-    "change_process": "reviewed branch and pull request, safety/CI checks, diff review, merge, deployment verification and indexing/discovery verification"
+    "primary": "Energy With Mark Control Centre Cloudflare Workers AI, called from the scheduled public-site workflow through GitHub Actions OIDC",
+    "repository_guardrails": "bounded ewm-growth branch and pull request, independent Website Growth CI, deterministic generated-diff verification, then allowlisted auto-merge",
+    "cadence": "daily scheduled review plus manual dispatch when required",
+    "change_process": "trusted-source request, private Business System AI proposal, deterministic safety validation, one allowlisted branch and pull request, independent CI and diff verification, bounded merge, deployment rebuild and indexing verification"
   },
   "automatic_publish": {
     "allowed": [
@@ -17,8 +17,9 @@
       "internal links between existing public educational pages"
     ],
     "max_visible_pages_per_run": 1,
-    "grounding": "New visible wording must be supported by the current published site and, when outside facts are required, authoritative sources reviewed in the same run.",
-    "cadence": "at most one meaningful low-risk visible improvement per business-system run"
+    "grounding": "New visible wording must be supported by the current published page and, when outside facts are required, authoritative sources reviewed in the same run.",
+    "cadence": "at most one meaningful low-risk visible improvement per scheduled run",
+    "merge_boundary": "Visible article changes may auto-merge only when they are generated from an allowlisted source page, contain no blocked claim classes or digits, reproduce the deterministic Website Growth transformation exactly, and pass an independently dispatched CI run."
   },
   "approval_required": [
     "government rebates, grants, incentives or eligibility",
@@ -36,6 +37,7 @@
     "Never publish a time-sensitive energy-policy claim without a separate authoritative-source review path.",
     "Fail closed when model output is malformed, ungrounded or contains blocked financial/time-sensitive claim language.",
     "Keep Mark Fitzpatrick identified as the human adviser and author; AI supports publishing workflow but does not become the adviser of record.",
-    "Repository guardrails remain read-only; customer-visible publishing must come through the Business System agent change process."
+    "The scheduled agent may write only to a temporary ewm-growth branch and pull request. Direct automatic writes to main are prohibited; main may change only through the bounded post-CI merge gate.",
+    "Approval-required claim classes and customer workflows are outside the automatic merge boundary."
   ]
 }
