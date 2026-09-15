@@ -1,93 +1,184 @@
-name: Website Growth Agent Guardrails
+name: Website Growth Agent
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/website-growth-agent.yml"
-      - "scripts/website-growth-agent.mjs"
-      - "growth-agent-policy.json"
-      - "growth-agent-status.json"
-      - "llms.txt"
-      - "robots.txt"
-      - "sitemap.xml"
-      - "articles/**"
   schedule:
-    - cron: "30 20 * * 1,4"
+    - cron: "30 20 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  actions: write
+  id-token: write
 
 concurrency:
-  group: website-growth-agent-guardrails
+  group: website-growth-agent
   cancel-in-progress: false
 
 jobs:
-  guardrails:
+  prepare-bounded-improvement:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out public website
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Run Website Growth Agent safety tests
+      - name: Run Website Growth safety tests before AI
         run: node --test tests/website-growth-agent.test.mjs
 
-      - name: Verify live discovery source
+      - name: Prepare bounded Business System request
+        id: candidate
         shell: bash
         run: |
-          node --input-type=module <<'NODE'
-          import fs from "node:fs/promises";
-          import { auditStaticDiscovery } from "./scripts/website-growth-agent.mjs";
+          set -euo pipefail
+          node scripts/website-growth-agent.mjs --prepare-request /tmp/growth-request.json
+          if [ ! -s /tmp/growth-request.json ]; then
+            echo "has_candidate=false" >> "$GITHUB_OUTPUT"
+            echo "All current low-risk evergreen candidates are already enriched."
+            exit 0
+          fi
+          echo "has_candidate=true" >> "$GITHUB_OUTPUT"
+          node -e 'const fs=require("fs"); const v=JSON.parse(fs.readFileSync("/tmp/growth-request.json","utf8")); console.log(`Candidate: ${v.pagePath}`)'
 
-          const safeArticles = [
-            "articles/how-big-should-home-battery-be.html",
-            "articles/do-i-need-hybrid-inverter-for-battery.html",
-            "articles/does-battery-mean-whole-home-backup.html",
-            "articles/how-ev-changes-solar-sizing.html",
-            "articles/what-information-needed-for-solar-assessment.html",
-            "articles/what-is-solar-self-consumption.html",
-            "articles/why-i-need-your-electricity-bill.html"
-          ];
-
-          const [robots, sitemap, llms, policyRaw, statusRaw] = await Promise.all([
-            fs.readFile("robots.txt", "utf8"),
-            fs.readFile("sitemap.xml", "utf8"),
-            fs.readFile("llms.txt", "utf8"),
-            fs.readFile("growth-agent-policy.json", "utf8"),
-            fs.readFile("growth-agent-status.json", "utf8")
-          ]);
-
-          const policy = JSON.parse(policyRaw);
-          const status = JSON.parse(statusRaw);
-          if (policy.agent !== "Website Growth Agent") throw new Error("Website Growth Agent policy identity is missing.");
-          if (status.agent !== "Website Growth Agent" || status.active !== true) throw new Error("Website Growth Agent is not marked active.");
-
-          const issues = [];
-          for (const articlePath of safeArticles) {
-            try {
-              await fs.access(articlePath);
-            } catch {
-              issues.push(`Missing safe article candidate: ${articlePath}`);
-              continue;
-            }
-            issues.push(...auditStaticDiscovery({ robots, sitemap, llms, articlePath }));
-          }
-          const unique = [...new Set(issues)];
-          if (unique.length) throw new Error(`Discovery guardrail failed: ${unique.join("; ")}`);
-          console.log(`Website Growth Agent guardrails passed for ${safeArticles.length} evergreen article candidates.`);
+      - name: Request GitHub Actions OIDC token
+        if: steps.candidate.outputs.has_candidate == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          oidc_url="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=energy-with-mark-website-growth"
+          curl --fail --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "$oidc_url" \
+            -o /tmp/oidc-response.json
+          node - <<'NODE'
+          const fs = require("fs");
+          const payload = JSON.parse(fs.readFileSync("/tmp/oidc-response.json", "utf8"));
+          if (!payload.value || typeof payload.value !== "string") throw new Error("GitHub OIDC token response is missing its value.");
+          fs.writeFileSync("/tmp/oidc-token.txt", payload.value, { mode: 0o600 });
           NODE
 
-      - name: Record guardrail summary
+      - name: Ask the private Business System AI for one bounded proposal
+        id: inference
+        if: steps.candidate.outputs.has_candidate == 'true'
+        shell: bash
+        env:
+          GROWTH_ENDPOINT: https://control.energywithmark.com.au/api/website-growth/prepare
+        run: |
+          set -euo pipefail
+          token="$(cat /tmp/oidc-token.txt)"
+          status="$(curl --silent --show-error \
+            --output /tmp/growth-runtime-response.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer ${token}" \
+            --header "Content-Type: application/json" \
+            --data-binary @/tmp/growth-request.json \
+            "$GROWTH_ENDPOINT")"
+          if [ "$status" != "200" ]; then
+            echo "Business System Website Growth runtime returned HTTP $status." >&2
+            cat /tmp/growth-runtime-response.json >&2 || true
+            exit 1
+          fi
+          node - <<'NODE'
+          const fs = require("fs");
+          const request = JSON.parse(fs.readFileSync("/tmp/growth-request.json", "utf8"));
+          const response = JSON.parse(fs.readFileSync("/tmp/growth-runtime-response.json", "utf8"));
+          if (!response.proposal || !["publish", "no_change"].includes(response.proposal.decision)) throw new Error("Business System response is missing a bounded proposal.");
+          if (response.sourceSha !== process.env.GITHUB_SHA || response.sourceSha !== request.sourceSha) throw new Error("Business System response source SHA does not match this trusted run.");
+          if (response.pagePath !== request.pagePath) throw new Error("Business System response page path does not match this trusted run.");
+          fs.writeFileSync("/tmp/ai-response.json", JSON.stringify(response.proposal));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${response.proposal.decision === "publish" ? "true" : "false"}\n`);
+          console.log(`Business System decision: ${response.proposal.decision}`);
+          NODE
+
+      - name: Apply one low-risk grounded improvement
+        if: steps.inference.outputs.publish == 'true'
+        env:
+          EWM_GROWTH_AI_RESPONSE_FILE: /tmp/ai-response.json
+          EWM_GROWTH_OUTPUT_FILE: /tmp/changed-urls.txt
+          EWM_GROWTH_MODEL: control-centre-workers-ai
+        run: node scripts/website-growth-agent.mjs
+
+      - name: Re-run safety tests after generated change
+        if: steps.inference.outputs.publish == 'true'
+        run: node --test tests/website-growth-agent.test.mjs
+
+      - name: Verify the generated diff is exactly one safe visible page plus evidence files
+        id: diff
+        if: steps.inference.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          article="$(node -e 'const fs=require("fs"); process.stdout.write(JSON.parse(fs.readFileSync("/tmp/growth-request.json","utf8")).pagePath)')"
+          git diff --name-only > /tmp/growth-paths.txt
+          cat /tmp/growth-paths.txt
+          test "$(wc -l < /tmp/growth-paths.txt | tr -d ' ')" = "3"
+          grep -Fxq "$article" /tmp/growth-paths.txt
+          grep -Fxq "sitemap.xml" /tmp/growth-paths.txt
+          grep -Fxq "growth-agent-status.json" /tmp/growth-paths.txt
+          case "$article" in
+            articles/how-big-should-home-battery-be.html|\
+            articles/do-i-need-hybrid-inverter-for-battery.html|\
+            articles/does-battery-mean-whole-home-backup.html|\
+            articles/how-ev-changes-solar-sizing.html|\
+            articles/what-information-needed-for-solar-assessment.html|\
+            articles/what-is-solar-self-consumption.html|\
+            articles/why-i-need-your-electricity-bill.html) ;;
+            *) echo "Refusing non-allowlisted Website Growth article: $article" >&2; exit 1 ;;
+          esac
+          echo "article=$article" >> "$GITHUB_OUTPUT"
+
+      - name: Create reviewed Website Growth branch and pull request
+        id: pr
+        if: steps.inference.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTICLE: ${{ steps.diff.outputs.article }}
+        run: |
+          set -euo pipefail
+          branch="ewm-growth/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "Energy With Mark Website Growth Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "$ARTICLE" sitemap.xml growth-agent-status.json
+          git commit -m "Website Growth Agent: grounded evergreen improvement"
+          git push origin "$branch"
+          pr_url="$(gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "$branch" \
+            --title "[Website Growth Agent] Grounded evergreen improvement" \
+            --body "Business System Website Growth run ${GITHUB_RUN_ID}. One allowlisted evergreen article only, grounded in the page's existing published content. Deterministic safety tests passed before and after generation. No financial, incentive, product, legal, customer-workflow, calculator, booking, bill-upload or lead-capture changes are permitted by this run.")"
+          echo "Created $pr_url"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch independent Website Growth CI on the proposed branch
+        if: steps.inference.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: gh workflow run website-growth-agent-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+
+      - name: Record run summary
+        shell: bash
         run: |
           {
             echo "### Website Growth Agent"
-            echo "Repository safety and discovery guardrails passed."
-            echo "AI research, review and bounded publishing are managed by the Energy With Mark Business System Website Growth Agent."
-            echo "This workflow has read-only repository authority and cannot publish customer-visible changes."
+            if [ "${{ steps.candidate.outputs.has_candidate }}" != "true" ]; then
+              echo "No unenriched low-risk article candidate remains."
+            elif [ "${{ steps.inference.outputs.publish }}" != "true" ]; then
+              echo "The Business System returned no safe grounded visible change. Nothing was published."
+            else
+              echo "A bounded low-risk proposal was created from the private Business System AI, re-tested, committed to an ewm-growth branch and sent to independent Website Growth CI."
+              echo "Pull request: ${{ steps.pr.outputs.pr_url }}"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
