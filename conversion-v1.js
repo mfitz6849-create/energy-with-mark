@@ -1,193 +1,533 @@
 (() => {
   'use strict';
 
-  const page = window.location.pathname.split('/').filter(Boolean).pop() || 'index.html';
-  const rootUrl = path => new URL(`/${String(path).replace(/^\/+/, '')}`, window.location.origin).href;
-  const socialProfiles = [
-    ['Instagram','IG','https://www.instagram.com/mark.fitzpatrick2026/'],
-    ['Facebook','f','https://www.facebook.com/profile.php?id=61592092305366'],
-    ['YouTube','▶','https://www.youtube.com/@EnergywithMark'],
-    ['LinkedIn','in','https://www.linkedin.com/in/mark-fitzpatrick-b9378017b/'],
-    ['TikTok','♪','https://www.tiktok.com/@markfitzpatrickenergy'],
-    ['Substack','S','https://markfitzpatrickenergy.substack.com/']
-  ];
+  const INTAKE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
+  const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
+  const CONTEXT_KEY = 'ewmExistingSolarContext';
 
-  const ensureMeta = (property, content, attr = 'property') => {
-    let el = document.head.querySelector(`meta[${attr}="${property}"]`);
-    if (!el) {
-      el = document.createElement('meta');
-      el.setAttribute(attr, property);
-      document.head.appendChild(el);
-    }
-    el.content = content;
+  // Keep the existing conversion/profile layer unchanged.
+  const loadBaseLayer = () => {
+    if (document.querySelector('script[data-ewm-conversion-base]')) return;
+    const base = document.createElement('script');
+    base.src = new URL('/conversion-v1-base.js', window.location.origin).href;
+    base.async = true;
+    base.dataset.ewmConversionBase = 'true';
+    document.body.appendChild(base);
   };
 
-  const canonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href.split('#')[0];
-  const description = document.querySelector('meta[name="description"]')?.content || 'Plain-English solar, battery and energy advice from Mark Fitzpatrick.';
-  const profileImage = rootUrl('assets/mark-fitzpatrick-primary.svg');
-  ensureMeta('og:site_name', 'Energy With Mark');
-  ensureMeta('og:type', document.querySelector('meta[property="og:type"]')?.content || 'website');
-  ensureMeta('og:title', document.title);
-  ensureMeta('og:description', description);
-  ensureMeta('og:url', canonical);
-  ensureMeta('og:image', profileImage);
-  ensureMeta('og:image:alt', 'Mark Fitzpatrick — Energy With Mark');
-  ensureMeta('twitter:card', 'summary', 'name');
-  ensureMeta('twitter:title', document.title, 'name');
-  ensureMeta('twitter:description', description, 'name');
-  ensureMeta('twitter:image', profileImage, 'name');
+  const clean = value => String(value ?? '').trim();
+  const value = selector => clean(document.querySelector(selector)?.value);
+  const text = selector => clean(document.querySelector(selector)?.textContent);
+  const selectedValue = (root, name) => root?.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  const queryFields = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      utmSource: params.get('utm_source') || '',
+      utmMedium: params.get('utm_medium') || '',
+      utmCampaign: params.get('utm_campaign') || ''
+    };
+  };
 
-  if (!document.querySelector('script[data-mark-person-schema]')) {
-    const schema = document.createElement('script');
-    schema.type = 'application/ld+json';
-    schema.dataset.markPersonSchema = 'true';
-    schema.textContent = JSON.stringify({
-      '@context':'https://schema.org',
-      '@type':'Person',
-      name:'Mark Fitzpatrick',
-      jobTitle:'Renewable Energy Specialist',
-      url:'https://energywithmark.com.au/',
-      image:profileImage,
-      email:'mark.fitzpatrick@classaenergy.com.au',
-      telephone:'+61434151237',
-      sameAs:socialProfiles.map(([, , url]) => url),
-      worksFor:{'@type':'Organization',name:'Energy With Mark',url:'https://energywithmark.com.au/'}
-    });
-    document.head.appendChild(schema);
-  }
+  const propertyToCustomerType = property => ({
+    home: 'Homeowner',
+    business: 'Business owner',
+    community: 'Sporting or community organisation',
+    farm: 'Other'
+  }[property] || 'Other');
 
-  // Retire old customer paths everywhere, including older article templates.
-  document.querySelectorAll('a[href]').forEach(link => {
-    let url;
-    try { url = new URL(link.getAttribute('href') || '', window.location.href); } catch (_) { return; }
-    const pathname = url.pathname;
-    if (pathname.endsWith('/tools.html') || pathname === '/articles/calculator.html') {
-      link.href = rootUrl('calculator.html');
-    } else if (pathname.endsWith('/assessment.html')) {
-      link.href = rootUrl('upload-bill.html');
-    } else if (pathname === '/articles/community.html') {
-      link.href = rootUrl('community.html');
-    } else if (pathname === '/articles/how-i-get-paid.html') {
-      link.href = rootUrl('how-i-get-paid.html');
-    } else if (pathname === '/articles/who-i-work-with.html') {
-      link.href = rootUrl('who-i-work-with.html');
-    }
-  });
+  const frequencyToBillingPeriod = frequency => ({
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    annual: 'Other'
+  }[frequency] || 'Other');
 
-  const exactReplacements = new Map([
-    ['Free Bill Review','Free Full Energy Assessment'],
-    ['Bill Review','Free Full Energy Assessment'],
-    ['Solar Calculator','Full Calculator'],
-    ['Try Calculator','Full Calculator'],
-    ['Start Assessment','Free Full Energy Assessment'],
-    ['Energy Assessment','Free Full Energy Assessment'],
-    ['Have My Energy Use Assessed','Get Free Full Energy Assessment'],
-    ['Upload My Electricity Bill','Get Free Full Energy Assessment'],
-    ['Send My Power Bill','Get Free Full Energy Assessment'],
-    ['Book a Discussion','Book a Call'],
-    ['Ask for a Call','Book a Call']
-  ]);
-  document.querySelectorAll('a,button').forEach(el => {
-    const text = (el.textContent || '').trim();
-    if (exactReplacements.has(text)) el.textContent = exactReplacements.get(text);
-  });
-
-  // Older article CTAs often had two routes that now point to the same place.
-  document.querySelectorAll('.article-cta .btns').forEach(group => {
-    const links = [...group.querySelectorAll('a[href]')];
-    if (!links.length) return;
-    links[0].href = rootUrl('upload-bill.html');
-    links[0].textContent = 'Get Free Full Energy Assessment';
-    if (links[1]) {
-      links[1].href = rootUrl('calculator.html');
-      links[1].textContent = 'Use Full Calculator';
-    }
-  });
-
-  // Remove duplicate destinations from older footer link groups after legacy rewrites.
-  document.querySelectorAll('.footer p').forEach(group => {
-    const seen = new Set();
-    [...group.querySelectorAll('a[href]')].forEach(link => {
-      let key;
-      try { key = new URL(link.href, window.location.href).pathname; } catch (_) { return; }
-      if (!seen.has(key)) { seen.add(key); return; }
-      const next = link.nextSibling;
-      const prev = link.previousSibling;
-      if (next && next.nodeName === 'BR') next.remove();
-      else if (prev && prev.nodeName === 'BR') prev.remove();
-      link.remove();
-    });
-  });
-
-  if (page === 'calculator.html') {
-    const sideHelp = document.querySelector('.side-help p');
-    if (sideHelp) sideHelp.textContent = 'Choose the answer that feels closest. This is a first estimate, not a full assessment or final quote.';
-    const warning = document.querySelector('.plain-warning strong');
-    if (warning) warning.textContent = 'This is a first estimate, not a full assessment or final quote.';
-    document.querySelectorAll('.result-actions a[href$="upload-bill.html"]').forEach(link => { link.textContent = 'Get Free Full Energy Assessment'; });
-    const calcButton = document.getElementById('calculateFull');
-    if (calcButton) calcButton.addEventListener('click', () => setTimeout(() => {
-      if (document.querySelector('.calc-step[data-step="4"].active')) {
-        try { window.gtag?.('event','full_calculator_complete'); } catch (_) {}
+  const makeRequestId = prefix => {
+    let randomPart = '';
+    try {
+      if (window.crypto?.getRandomValues) {
+        randomPart = Array.from(window.crypto.getRandomValues(new Uint32Array(2)))
+          .map(v => v.toString(36)).join('');
       }
-    }, 0));
-  }
+    } catch (_) {}
+    if (!randomPart) randomPart = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return (`ewm-${prefix}-${Date.now().toString(36)}-${randomPart}`).slice(0, 78);
+  };
 
-  if (page === 'index.html') {
-    const quickNote = document.querySelector('.quick-result-note');
-    if (quickNote) quickNote.textContent = 'This is a first estimate, not a full assessment or final quote. Your real result depends on your power use, roof, current solar and final prices.';
-    const quickButton = document.getElementById('quickCalculate');
-    if (quickButton) quickButton.addEventListener('click', () => setTimeout(() => {
-      if (document.querySelector('.quick-step[data-step="3"].active')) {
-        try { window.gtag?.('event','quick_check_complete'); } catch (_) {}
-      }
-    }, 0));
-  }
+  const saveExistingContext = context => {
+    try { localStorage.setItem(CONTEXT_KEY, JSON.stringify({ ...context, savedAt: new Date().toISOString() })); } catch (_) {}
+  };
 
-  const footerFirst = document.querySelector('.footer .footer-grid > div:first-child');
-  if (footerFirst) {
-    let social = footerFirst.querySelector('[data-footer-social]');
-    if (!social) {
-      social = document.createElement('div');
-      social.dataset.footerSocial = 'true';
-      footerFirst.appendChild(social);
-    } else if (social.tagName === 'P') {
-      const replacement = document.createElement('div');
-      replacement.dataset.footerSocial = 'true';
-      social.replaceWith(replacement);
-      social = replacement;
+  const getExistingContext = () => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CONTEXT_KEY) || 'null');
+      if (!raw || raw.existingSolar !== 'yes') return null;
+      return raw;
+    } catch (_) { return null; }
+  };
+
+  const verifiedIframeSubmit = ({ payload, expectedSource, timeoutMs = 25000, timeoutMessage }) => new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.name = `ewm_verified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    iframe.title = 'Energy With Mark secure submission acknowledgement';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.tabIndex = -1;
+    iframe.style.cssText = 'position:absolute;width:1px;height:1px;border:0;left:-10000px;top:auto;overflow:hidden;';
+    document.body.appendChild(iframe);
+
+    const transport = document.createElement('form');
+    transport.method = 'POST';
+    transport.action = INTAKE_ENDPOINT;
+    transport.target = iframe.name;
+    transport.style.display = 'none';
+
+    const add = (name, fieldValue) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = fieldValue;
+      transport.appendChild(input);
+    };
+    add('responseMode', 'iframe');
+    add('parentOrigin', window.location.origin);
+    add('payload', JSON.stringify(payload));
+    document.body.appendChild(transport);
+
+    let finished = false;
+    let timer = null;
+    const cleanup = () => {
+      window.removeEventListener('message', onMessage);
+      if (timer) clearTimeout(timer);
+      transport.remove();
+      iframe.remove();
+    };
+    const fail = message => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      reject(new Error(message));
+    };
+    const onMessage = event => {
+      const googleOrigin = event.origin === 'https://script.google.com' || event.origin.endsWith('.googleusercontent.com');
+      if (!googleOrigin) return;
+      const message = event.data;
+      if (!message || message.source !== expectedSource || !message.payload) return;
+      const result = message.payload;
+      if (result.requestId !== payload?.fields?.clientRequestId) return;
+      if (!result.ok) return fail(result.error || 'The submission could not be accepted.');
+      if (finished) return;
+      finished = true;
+      cleanup();
+      resolve(result);
+    };
+
+    window.addEventListener('message', onMessage);
+    timer = setTimeout(() => fail(timeoutMessage || 'Your request was sent, but this page could not confirm it. Please do not send it again. Call Mark on 0434 151 237 so he can check.'), timeoutMs);
+    transport.submit();
+  });
+
+  const assessmentPayload = ({
+    sourcePage, customerType, postcode, helpWith, goals, billAmount, billingPeriod,
+    existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
+    notes, requestId
+  }) => ({
+    type: 'assessment',
+    source: 'Energy With Mark Website',
+    submittedAt: new Date().toISOString(),
+    fields: {
+      name, phone, email, customerType, postcode, address: '',
+      helpWith, goals, billAmount, billingPeriod, existingSolar, solarSize, systemAge,
+      inverter, highExports: '', usagePattern: '', evStatus: '', businessName: '',
+      businessType: '', startTime: '', finishTime: '', hasIntervalData: '',
+      batteryInterest: '', backupImportance: '', futureNeeds: [],
+      preferredContact: 'Phone', notes, website: '',
+      privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+      privacyAcknowledged: true,
+      sourcePage, landingPage: sourcePage, pageUrl: window.location.href,
+      referrer: document.referrer || '', clientRequestId: requestId, ...queryFields()
+    },
+    files: []
+  });
+
+  const addQuickExistingSolarFields = () => {
+    const form = document.getElementById('quickSolarCheck');
+    if (!form || document.getElementById('quickExistingSolarDetails')) return;
+    const yes = form.querySelector('input[name="quickExistingSolar"][value="yes"]');
+    const host = yes?.closest('.quick-field');
+    if (!host) return;
+
+    const details = document.createElement('div');
+    details.id = 'quickExistingSolarDetails';
+    details.className = 'quick-field full';
+    details.style.display = 'none';
+    details.innerHTML = `
+      <span>About your current solar <small>(if known)</small></span>
+      <div class="quick-fields" style="margin-top:8px">
+        <div class="quick-field"><span>System size (kW)</span><input id="quickExistingSize" type="number" min="0" step="0.1" placeholder="e.g. 6.6"></div>
+        <div class="quick-field"><span>System age</span><select id="quickSystemAge"><option value="">Not sure</option><option>Under 2 years</option><option>2–5 years</option><option>5–10 years</option><option>More than 10 years</option></select></div>
+      </div>`;
+    host.insertAdjacentElement('afterend', details);
+
+    const sync = () => {
+      const existing = selectedValue(form, 'quickExistingSolar');
+      details.style.display = existing === 'yes' ? '' : 'none';
+      if (existing === 'yes') saveExistingContext({
+        existingSolar: 'yes',
+        systemSize: value('#quickExistingSize'),
+        systemAge: value('#quickSystemAge')
+      });
+    };
+    form.querySelectorAll('input[name="quickExistingSolar"]').forEach(input => input.addEventListener('change', sync));
+    details.querySelectorAll('input,select').forEach(input => input.addEventListener('change', sync));
+    sync();
+  };
+
+  const addFullCalculatorExistingSolarFields = () => {
+    const form = document.getElementById('fullSolarCalculator');
+    const wrap = document.getElementById('existingSizeWrap');
+    if (!form || !wrap || document.getElementById('existingSystemExtra')) return;
+
+    const label = wrap.querySelector('label > span');
+    if (label) label.innerHTML = 'About how big is your current solar system? <em>Optional if unknown</em>';
+
+    const extra = document.createElement('div');
+    extra.id = 'existingSystemExtra';
+    extra.className = 'simple-fields';
+    extra.style.marginTop = '14px';
+    extra.innerHTML = `
+      <label><span>How old is the system?</span><select id="existingSystemAge"><option value="">Not sure</option><option>Under 2 years</option><option>2–5 years</option><option>5–10 years</option><option>More than 10 years</option></select></label>
+      <label><span>Inverter brand/model <em>Optional</em></span><input id="existingInverter" type="text" placeholder="e.g. Sungrow SH5.0RS"></label>
+      <label><span>Do you already have a battery?</span><select id="existingBattery"><option value="">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select></label>`;
+    wrap.appendChild(extra);
+
+    const context = getExistingContext();
+    if (context) {
+      if (context.systemSize && !value('#existingSize')) document.getElementById('existingSize').value = context.systemSize;
+      if (context.systemAge) document.getElementById('existingSystemAge').value = context.systemAge;
     }
-    social.className = 'footer-social';
-    social.innerHTML = `<strong>Follow Energy With Mark</strong><div class="social-chip-row">${socialProfiles.map(([label,mark,url]) => `<a class="social-chip" href="${url}" target="_blank" rel="noopener noreferrer" aria-label="Energy With Mark on ${label}"><span class="social-mark">${mark}</span><span>${label}</span></a>`).join('')}</div>`;
-  }
+    const sync = () => {
+      if (selectedValue(form, 'existingSolar') === 'yes') {
+        saveExistingContext({
+          existingSolar: 'yes',
+          systemSize: value('#existingSize'),
+          systemAge: value('#existingSystemAge'),
+          inverter: value('#existingInverter'),
+          hasBattery: value('#existingBattery')
+        });
+      }
+    };
+    form.querySelectorAll('input[name="existingSolar"]').forEach(input => input.addEventListener('change', sync));
+    extra.querySelectorAll('input,select').forEach(input => input.addEventListener('change', sync));
+    document.getElementById('existingSize')?.addEventListener('change', sync);
+  };
 
-  if (page === 'index.html' && !document.querySelector('.proof-section')) {
-    const proof = document.createElement('section');
-    proof.className = 'proof-section';
-    proof.innerHTML = `<div class="container"><div class="proof-head"><div class="eyebrow">Common situations</div><h2>Different energy problems need different answers.</h2><p>The goal is not to sell everyone the same system. It is to work out what is worth checking for your situation.</p></div><div class="proof-grid"><div class="proof-card"><div class="proof-icon">⌂</div><h3>High home power bills</h3><p>Check whether solar may reduce grid use and whether a battery is actually worth comparing.</p></div><div class="proof-card"><div class="proof-icon">☀</div><h3>You already have solar</h3><p>Review the current system, exports and later grid use before adding more equipment.</p></div><div class="proof-card"><div class="proof-icon">▦</div><h3>Business energy costs</h3><p>Look at daytime use, tariff structure and whether the investment case is strong enough to go further.</p></div><div class="proof-card"><div class="proof-icon">★</div><h3>Club or community site</h3><p>Start with the whole site, then work out which energy option fits how the facility is actually used.</p></div></div></div>`;
-    const assessment = document.querySelector('.assessment-section');
-    if (assessment) assessment.insertAdjacentElement('beforebegin', proof);
+  const replaceButton = id => {
+    const oldButton = document.getElementById(id);
+    if (!oldButton) return null;
+    const button = oldButton.cloneNode(true);
+    oldButton.replaceWith(button);
+    return button;
+  };
 
-    const preview = document.createElement('section');
-    preview.className = 'assessment-preview-section';
-    preview.innerHTML = `<div class="container assessment-preview"><div><span class="preview-badge">Example assessment</span><h2>What a full energy assessment can tell you.</h2><p>This is the kind of plain-English answer I aim to give after reviewing your real bill. The exact result depends on your property and energy use.</p><a class="btn btn-primary" href="${rootUrl('upload-bill.html')}">Upload My Bill for Free Assessment</a></div><div class="preview-report"><div><span>Current position</span><strong>What you use and what you pay</strong><small>Bill amount, usage, tariff and any solar credits shown.</small></div><div><span>What I found</span><strong>The main opportunity or problem</strong><small>Solar, battery, existing-system review or sometimes no change.</small></div><div><span>Options considered</span><strong>What is worth comparing</strong><small>Simple options with the assumptions and missing information made clear.</small></div><div><span>Next step</span><strong>What I would check next</strong><small>You can stop there, send more information, or book a call to talk it through.</small></div></div></div>`;
-    if (proof.nextElementSibling) proof.insertAdjacentElement('afterend', preview);
-  }
+  const hardenQuickLead = () => {
+    const form = document.getElementById('quickSolarCheck');
+    const button = replaceButton('quickLeadButton');
+    if (!form || !button) return;
 
-  const journeyPages = new Set(['home.html','business.html','existing-solar.html','community.html','calculator.html','upload-bill.html','book.html','how-i-help.html']);
-  if (journeyPages.has(page) && !document.querySelector('.site-journey')) {
-    const active = page === 'calculator.html' ? 2 : page === 'upload-bill.html' ? 3 : page === 'book.html' ? 4 : 0;
-    const steps = [
-      ['1','60 Second Check','Fast first result',rootUrl('index.html#solar-check')],
-      ['2','Full Calculator','More detail',rootUrl('calculator.html')],
-      ['3','Free Full Energy Assessment','Upload one bill',rootUrl('upload-bill.html')],
-      ['4','Book a Call','Talk it through',rootUrl('book.html')]
-    ];
-    const section = document.createElement('section');
-    section.className = 'site-journey';
-    section.setAttribute('aria-label','Your Energy With Mark journey');
-    section.innerHTML = `<div class="container"><div class="journey-mini-head"><strong>Your simple next steps</strong><span>Start simple. Go deeper only when it is useful.</span></div><div class="journey-mini-grid">${steps.map(([n,title,sub,href]) => `<a class="journey-mini-step${Number(n)===active?' active':''}" href="${href}"><span class="n">${n}</span><span><strong>${title}</strong><small>${sub}</small></span></a>`).join('')}</div></div>`;
-    const footer = document.querySelector('.footer');
-    if (footer) footer.insertAdjacentElement('beforebegin', section);
+    const consentCopy = document.querySelector('#quickConsent')?.closest('label')?.querySelector('span');
+    if (consentCopy) consentCopy.innerHTML = 'I have read the <a href="privacy.html"><strong>privacy policy</strong></a> and Mark may contact me about this result.';
+
+    button.addEventListener('click', async () => {
+      const error = document.getElementById('quickLeadError');
+      const name = value('#quickName'), phone = value('#quickPhone'), email = value('#quickEmail');
+      const consent = Boolean(document.getElementById('quickConsent')?.checked);
+      if (!name || !phone || !email) { if (error) error.textContent = 'Enter your name, mobile and email.'; return; }
+      if (!/^\S+@\S+\.\S+$/.test(email)) { if (error) error.textContent = 'Enter a valid email address.'; return; }
+      if (!consent) { if (error) error.textContent = 'Please read the privacy policy and confirm that Mark may contact you.'; return; }
+      if (error) error.textContent = '';
+
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Confirming your result…';
+      const existing = selectedValue(form, 'quickExistingSolar');
+      const requestId = makeRequestId('quick');
+      const payload = assessmentPayload({
+        sourcePage: '/',
+        customerType: propertyToCustomerType(selectedValue(form, 'quickProperty')),
+        postcode: value('#quickPostcode'),
+        helpWith: [existing === 'yes' ? 'Existing solar' : 'Solar'],
+        goals: [existing === 'yes' ? 'Review existing solar and next options' : 'Find out if solar can help'],
+        billAmount: value('#quickBill'),
+        billingPeriod: frequencyToBillingPeriod(value('#quickFrequency')),
+        existingSolar: existing === 'yes' ? 'Yes' : 'No',
+        solarSize: value('#quickExistingSize'),
+        systemAge: value('#quickSystemAge'),
+        name, phone, email,
+        notes: [
+          'Saved from Energy With Mark 60 Second Check.',
+          `Result: ${text('#quickResultStatus') || 'Not recorded'}`,
+          `Possible solar size/result: ${text('#quickSolarSize') || 'Not recorded'}`,
+          `Possible yearly saving/result: ${text('#quickSavingRange') || 'Not recorded'}`,
+          `Displayed yearly bill: ${text('#quickAnnualBill') || 'Not recorded'}`
+        ].join(' | '),
+        requestId
+      });
+
+      try {
+        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        if (existing === 'yes') saveExistingContext({
+          existingSolar: 'yes',
+          systemSize: value('#quickExistingSize'),
+          systemAge: value('#quickSystemAge')
+        });
+        try { localStorage.setItem('ewmQuickSolarLead', JSON.stringify({ requestId, name, phone, email, postcode: value('#quickPostcode'), source: 'Energy With Mark 60 Second Solar Check' })); } catch (_) {}
+        document.getElementById('quickLeadFields')?.classList.add('hidden');
+        document.getElementById('quickSuccess')?.classList.remove('hidden');
+        try { window.gtag?.('event', 'generate_lead', { form_type: '60_second_solar_check', acknowledgement: 'verified' }); } catch (_) {}
+      } catch (err) {
+        if (error) error.textContent = err instanceof Error ? err.message : 'The result could not be confirmed. Please call Mark on 0434 151 237.';
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+  };
+
+  const hardenFullCalculatorLead = () => {
+    const form = document.getElementById('fullSolarCalculator');
+    const button = replaceButton('saveResult');
+    if (!form || !button) return;
+
+    const consentCopy = document.querySelector('#leadConsent')?.closest('label')?.querySelector('span');
+    if (consentCopy) consentCopy.innerHTML = 'I have read the <a href="privacy.html">privacy policy</a> and Mark may contact me about this result.';
+
+    button.addEventListener('click', async () => {
+      const error = document.getElementById('leadError');
+      const name = value('#leadName'), phone = value('#leadPhone'), email = value('#leadEmail');
+      const consent = Boolean(document.getElementById('leadConsent')?.checked);
+      if (!name || !phone || !email) { if (error) error.textContent = 'Enter your name, mobile and email.'; return; }
+      if (!/^\S+@\S+\.\S+$/.test(email)) { if (error) error.textContent = 'Enter a valid email address.'; return; }
+      if (!consent) { if (error) error.textContent = 'Please read the privacy policy and confirm that Mark may contact you.'; return; }
+      if (error) error.textContent = '';
+
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Confirming your result…';
+      const existing = selectedValue(form, 'existingSolar');
+      const battery = selectedValue(form, 'battery');
+      const goal = selectedValue(form, 'goal');
+      const requestId = makeRequestId('calculator');
+      const help = existing === 'yes' ? 'Existing solar' : battery === 'no' ? 'Solar' : 'Solar + battery';
+
+      const payload = assessmentPayload({
+        sourcePage: '/calculator.html',
+        customerType: propertyToCustomerType(selectedValue(form, 'property')),
+        postcode: value('#postcode'),
+        helpWith: [help],
+        goals: [goal || 'Understand whether solar or battery makes financial sense'],
+        billAmount: value('#billAmount'),
+        billingPeriod: frequencyToBillingPeriod(value('#billFrequency')),
+        existingSolar: existing === 'yes' ? 'Yes' : existing === 'no' ? 'No' : 'Not sure',
+        solarSize: value('#existingSize'),
+        systemAge: value('#existingSystemAge'),
+        inverter: value('#existingInverter'),
+        name, phone, email,
+        notes: [
+          'Saved from Energy With Mark Full Calculator.',
+          existing === 'yes' ? `Existing battery: ${value('#existingBattery') || 'Not sure'}` : '',
+          `Solar result: ${text('#solarSizeResult') || 'Not recorded'}`,
+          `Battery result: ${text('#batterySizeResult') || 'Not recorded'}`,
+          `Solar saving result: ${text('#solarSavingResult') || 'Not recorded'}`,
+          `Solar + battery saving result: ${text('#batterySavingResult') || 'Not recorded'}`,
+          `Solar payback result: ${text('#solarPayback') || 'Not recorded'}`,
+          `Solar + battery payback result: ${text('#batteryPayback') || 'Not recorded'}`
+        ].filter(Boolean).join(' | '),
+        requestId
+      });
+
+      try {
+        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        if (existing === 'yes') saveExistingContext({
+          existingSolar: 'yes',
+          systemSize: value('#existingSize'),
+          systemAge: value('#existingSystemAge'),
+          inverter: value('#existingInverter'),
+          hasBattery: value('#existingBattery')
+        });
+        document.getElementById('leadFields')?.classList.add('hidden');
+        document.getElementById('savedPanel')?.classList.remove('hidden');
+        try { window.gtag?.('event', 'generate_lead', { form_type: 'full_solar_calculator', acknowledgement: 'verified' }); } catch (_) {}
+      } catch (err) {
+        if (error) error.textContent = err instanceof Error ? err.message : 'The result could not be confirmed. Please call Mark on 0434 151 237.';
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+  };
+
+  const addBillExistingSolarFields = form => {
+    if (!form || form.querySelector('[data-existing-solar-assessment]')) return;
+    const help = form.elements.helpWith?.closest('.field');
+    if (!help) return;
+
+    const field = document.createElement('div');
+    field.className = 'field full';
+    field.dataset.existingSolarAssessment = 'true';
+    field.innerHTML = `
+      <label>Do you already have solar?</label>
+      <select name="existingSolar"><option value="Not sure">Not sure</option><option value="Yes">Yes</option><option value="No">No</option></select>
+      <div data-existing-details style="display:none;margin-top:14px">
+        <div class="form-grid">
+          <div class="field"><label>Current solar size (kW) <span class="small">(if known)</span></label><input name="solarSize" type="number" min="0" step="0.1" placeholder="e.g. 6.6"></div>
+          <div class="field"><label>System age</label><select name="systemAge"><option value="">Not sure</option><option>Under 2 years</option><option>2–5 years</option><option>5–10 years</option><option>More than 10 years</option></select></div>
+          <div class="field"><label>Inverter brand/model <span class="small">(optional)</span></label><input name="inverter" placeholder="e.g. Sungrow, Fronius"></div>
+          <div class="field"><label>Do you already have a battery?</label><select name="existingBattery"><option value="">Not sure</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+        </div>
+      </div>`;
+    help.insertAdjacentElement('afterend', field);
+
+    const details = field.querySelector('[data-existing-details]');
+    const context = getExistingContext();
+    if (context) {
+      form.elements.existingSolar.value = 'Yes';
+      if (context.systemSize) form.elements.solarSize.value = context.systemSize;
+      if (context.systemAge) form.elements.systemAge.value = context.systemAge;
+      if (context.inverter) form.elements.inverter.value = context.inverter;
+      if (context.hasBattery) form.elements.existingBattery.value = context.hasBattery === 'yes' ? 'Yes' : context.hasBattery === 'no' ? 'No' : '';
+    }
+    const sync = () => {
+      const isExisting = form.elements.existingSolar.value === 'Yes';
+      details.style.display = isExisting ? '' : 'none';
+      if (isExisting) saveExistingContext({
+        existingSolar: 'yes',
+        systemSize: clean(form.elements.solarSize.value),
+        systemAge: clean(form.elements.systemAge.value),
+        inverter: clean(form.elements.inverter.value),
+        hasBattery: clean(form.elements.existingBattery.value).toLowerCase()
+      });
+    };
+    form.elements.existingSolar.addEventListener('change', sync);
+    details.querySelectorAll('input,select').forEach(input => input.addEventListener('change', sync));
+    sync();
+  };
+
+  const fileToBase64 = file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('I could not read that file. Please choose it again.'));
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const comma = raw.indexOf(',');
+      resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const hardenBillUpload = () => {
+    const oldForm = document.querySelector('form[data-form-type="bill_upload"]');
+    if (!oldForm) return;
+
+    const form = oldForm.cloneNode(true);
+    oldForm.replaceWith(form);
+    addBillExistingSolarFields(form);
+
+    const button = form.querySelector('[type="submit"]');
+    const errorBox = form.querySelector('.form-error');
+    const statusBox = form.querySelector('.submit-status');
+    const showError = message => {
+      if (statusBox) statusBox.textContent = '';
+      if (errorBox) { errorBox.textContent = message; errorBox.style.display = 'block'; }
+      if (button) button.disabled = false;
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      if (errorBox) errorBox.style.display = 'none';
+
+      const file = form.elements.billFile?.files?.[0];
+      if (!file) return showError('Please choose one power bill.');
+      if (form.elements.billFile.files.length !== 1) return showError('Please send one bill at a time.');
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+      const allowedExtension = /\.(pdf|jpe?g|png)$/i.test(file.name || '');
+      if (!allowedTypes.includes(file.type) || !allowedExtension) return showError('Please use a PDF, JPG or PNG.');
+      if (file.size > 5 * 1024 * 1024) return showError('That file is over 5 MB. Please use a smaller file.');
+
+      if (button) button.disabled = true;
+      if (statusBox) statusBox.textContent = 'Preparing your bill securely…';
+
+      try {
+        const fd = new FormData(form);
+        const requestId = makeRequestId('bill');
+        const dataBase64 = await fileToBase64(file);
+        const existingSolar = clean(fd.get('existingSolar')) || 'Not sure';
+        const payload = {
+          type: 'bill_upload',
+          fields: {
+            name: clean(fd.get('name')), phone: clean(fd.get('phone')), email: clean(fd.get('email')),
+            postcode: clean(fd.get('postcode')), customerType: clean(fd.get('customerType')),
+            helpWith: clean(fd.get('helpWith')), existingSolar, billAmount: clean(fd.get('billAmount')),
+            notes: [
+              clean(fd.get('notes')),
+              existingSolar === 'Yes' ? `Current solar size: ${clean(fd.get('solarSize')) || 'Not known'} kW` : '',
+              existingSolar === 'Yes' ? `System age: ${clean(fd.get('systemAge')) || 'Not known'}` : '',
+              existingSolar === 'Yes' ? `Inverter: ${clean(fd.get('inverter')) || 'Not known'}` : '',
+              existingSolar === 'Yes' ? `Existing battery: ${clean(fd.get('existingBattery')) || 'Not known'}` : ''
+            ].filter(Boolean).join(' | '),
+            website: clean(fd.get('website')),
+            privacyNoticeVersion: clean(fd.get('privacyNoticeVersion')) || PRIVACY_NOTICE_VERSION,
+            privacyAcknowledged: fd.get('privacyAcknowledged') === 'Yes',
+            sourcePage: '/upload-bill.html', landingPage: '/upload-bill.html',
+            pageUrl: window.location.href, referrer: document.referrer || '',
+            clientRequestId: requestId, ...queryFields()
+          },
+          files: [{ name: file.name, mimeType: file.type, category: 'Electricity Bill', dataBase64 }]
+        };
+
+        if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
+        await verifiedIframeSubmit({
+          payload,
+          expectedSource: 'energy-with-mark-bill-upload-submit',
+          timeoutMs: 45000,
+          timeoutMessage: 'Your bill was sent, but this page could not confirm receipt. Please do not send it again. Call Mark on 0434 151 237 so he can check.'
+        });
+
+        if (existingSolar === 'Yes') saveExistingContext({
+          existingSolar: 'yes',
+          systemSize: clean(fd.get('solarSize')),
+          systemAge: clean(fd.get('systemAge')),
+          inverter: clean(fd.get('inverter')),
+          hasBattery: clean(fd.get('existingBattery')).toLowerCase()
+        });
+
+        const receiptPanel = document.getElementById('billReceiptPanel');
+        const waiting = document.getElementById('billReceiptWaiting');
+        const receiptFrame = document.getElementById('billReceiptFrame');
+        if (waiting) waiting.textContent = existingSolar === 'Yes'
+          ? 'Your bill and current solar details have been received and confirmed. I’ll review the system you already have before recommending any next step.'
+          : 'Your bill has been received and confirmed. I’ll use it as the starting point for your free full energy assessment.';
+        if (receiptFrame) receiptFrame.style.display = 'none';
+        form.style.display = 'none';
+        if (receiptPanel) {
+          receiptPanel.style.display = 'block';
+          receiptPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: 'verified', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
+      } catch (err) {
+        showError(err instanceof Error ? err.message : 'I could not confirm that bill. Please call Mark on 0434 151 237.');
+      }
+    });
+  };
+
+  const init = () => {
+    loadBaseLayer();
+    addQuickExistingSolarFields();
+    addFullCalculatorExistingSolarFields();
+    hardenQuickLead();
+    hardenFullCalculatorLead();
+    hardenBillUpload();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
   }
 })();
