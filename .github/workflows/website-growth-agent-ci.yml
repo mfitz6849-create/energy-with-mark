@@ -1,0 +1,47 @@
+name: Website Growth Agent CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/website-growth-agent.mjs"
+      - "tests/website-growth-agent.test.mjs"
+      - "growth-agent-policy.json"
+      - "growth-agent-status.json"
+      - "llms.txt"
+      - "robots.txt"
+      - "sitemap.xml"
+      - ".github/workflows/website-growth-agent*.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/website-growth-agent.mjs"
+      - "tests/website-growth-agent.test.mjs"
+      - "growth-agent-policy.json"
+      - "growth-agent-status.json"
+      - "llms.txt"
+      - "robots.txt"
+      - "sitemap.xml"
+      - ".github/workflows/website-growth-agent*.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out site
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Website Growth Agent safety tests
+        run: node --test tests/website-growth-agent.test.mjs
+      - name: Verify discovery files
+        run: |
+          grep -q "OAI-SearchBot" robots.txt
+          grep -q "https://energywithmark.com.au/sitemap.xml" robots.txt
+          grep -q "https://energywithmark.com.au/learn.html" llms.txt
+          grep -q '"financialClaimsAutoPublish": false' growth-agent-status.json
