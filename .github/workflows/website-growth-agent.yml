@@ -1,8 +1,6 @@
 name: Website Growth Agent
 
 on:
-  schedule:
-    - cron: "30 20 * * *"
   workflow_dispatch:
 
 permissions:
