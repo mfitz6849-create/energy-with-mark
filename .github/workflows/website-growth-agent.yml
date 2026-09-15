@@ -142,8 +142,9 @@ jobs:
           }
           const validation = validateProposal(proposal);
           if (!validation.ok) {
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=false\npublish=false\n");
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Copilot fallback was blocked safely: ${validation.reason}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\npublish=false\n");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Copilot fallback produced no publishable change and was blocked safely: ${validation.reason}\n`);
+            console.log(`Copilot fallback blocked safely: ${validation.reason}`);
             process.exit(0);
           }
           fs.writeFileSync("/tmp/copilot-proposal.json", JSON.stringify(proposal));
