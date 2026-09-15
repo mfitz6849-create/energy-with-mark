@@ -10,6 +10,7 @@ permissions:
   pull-requests: write
   actions: write
   id-token: write
+  copilot-requests: write
 
 concurrency:
   group: website-growth-agent
@@ -65,7 +66,7 @@ jobs:
           NODE
 
       - name: Ask the private Business System AI for one bounded proposal
-        id: inference
+        id: business_system
         if: steps.candidate.outputs.has_candidate == 'true'
         shell: bash
         env:
@@ -74,6 +75,7 @@ jobs:
           set -euo pipefail
           token="$(cat /tmp/oidc-token.txt)"
           status="$(curl --silent --show-error \
+            --max-time 45 \
             --output /tmp/growth-runtime-response.json \
             --write-out '%{http_code}' \
             --request POST \
@@ -82,9 +84,10 @@ jobs:
             --data-binary @/tmp/growth-request.json \
             "$GROWTH_ENDPOINT")"
           if [ "$status" != "200" ]; then
-            echo "Business System Website Growth runtime returned HTTP $status." >&2
-            cat /tmp/growth-runtime-response.json >&2 || true
-            exit 1
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Private Business System runtime returned HTTP $status; the bounded Copilot fallback will be tried." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           node - <<'NODE'
           const fs = require("fs");
@@ -93,17 +96,92 @@ jobs:
           if (!response.proposal || !["publish", "no_change"].includes(response.proposal.decision)) throw new Error("Business System response is missing a bounded proposal.");
           if (response.sourceSha !== process.env.GITHUB_SHA || response.sourceSha !== request.sourceSha) throw new Error("Business System response source SHA does not match this trusted run.");
           if (response.pagePath !== request.pagePath) throw new Error("Business System response page path does not match this trusted run.");
-          fs.writeFileSync("/tmp/ai-response.json", JSON.stringify(response.proposal));
+          fs.writeFileSync("/tmp/business-system-proposal.json", JSON.stringify(response.proposal));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\n");
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${response.proposal.decision === "publish" ? "true" : "false"}\n`);
           console.log(`Business System decision: ${response.proposal.decision}`);
           NODE
+
+      - name: Install GitHub Copilot CLI fallback
+        if: steps.candidate.outputs.has_candidate == 'true' && steps.business_system.outputs.available != 'true'
+        run: npm install -g @github/copilot
+
+      - name: Prepare the bounded fallback prompt
+        if: steps.candidate.outputs.has_candidate == 'true' && steps.business_system.outputs.available != 'true'
+        run: node scripts/website-growth-agent.mjs --prepare-prompt /tmp/growth-agent-prompt.txt
+
+      - name: Ask Copilot for one grounded fallback proposal
+        id: copilot_fallback
+        if: steps.candidate.outputs.has_candidate == 'true' && steps.business_system.outputs.available != 'true'
+        shell: bash
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          set +e
+          copilot -p "$(cat /tmp/growth-agent-prompt.txt)" -s \
+            --deny-tool='write' \
+            --deny-tool='shell' \
+            > /tmp/growth-copilot-response.txt \
+            2> /tmp/growth-copilot-error.txt
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Copilot fallback failed safely with exit code $code." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { extractJson, validateProposal } from "./scripts/website-growth-agent.mjs";
+          const proposal = extractJson(fs.readFileSync("/tmp/growth-copilot-response.txt", "utf8"));
+          if (proposal?.decision === "no_change") {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\npublish=false\n");
+            process.exit(0);
+          }
+          const validation = validateProposal(proposal);
+          if (!validation.ok) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=false\npublish=false\n");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Copilot fallback was blocked safely: ${validation.reason}\n`);
+            process.exit(0);
+          }
+          fs.writeFileSync("/tmp/copilot-proposal.json", JSON.stringify(proposal));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\npublish=true\n");
+          NODE
+
+      - name: Select the bounded proposal
+        id: inference
+        if: steps.candidate.outputs.has_candidate == 'true'
+        shell: bash
+        env:
+          BUSINESS_AVAILABLE: ${{ steps.business_system.outputs.available }}
+          BUSINESS_PUBLISH: ${{ steps.business_system.outputs.publish }}
+          COPILOT_AVAILABLE: ${{ steps.copilot_fallback.outputs.available }}
+          COPILOT_PUBLISH: ${{ steps.copilot_fallback.outputs.publish }}
+        run: |
+          set -euo pipefail
+          if [ "$BUSINESS_AVAILABLE" = "true" ]; then
+            echo "publish=$BUSINESS_PUBLISH" >> "$GITHUB_OUTPUT"
+            echo "model=control-centre-workers-ai" >> "$GITHUB_OUTPUT"
+            if [ "$BUSINESS_PUBLISH" = "true" ]; then cp /tmp/business-system-proposal.json /tmp/ai-response.json; fi
+            exit 0
+          fi
+          if [ "$COPILOT_AVAILABLE" = "true" ]; then
+            echo "publish=$COPILOT_PUBLISH" >> "$GITHUB_OUTPUT"
+            echo "model=github-copilot-auto-fallback" >> "$GITHUB_OUTPUT"
+            if [ "$COPILOT_PUBLISH" = "true" ]; then cp /tmp/copilot-proposal.json /tmp/ai-response.json; fi
+            exit 0
+          fi
+          echo "Neither bounded inference route was available." >&2
+          exit 1
 
       - name: Apply one low-risk grounded improvement
         if: steps.inference.outputs.publish == 'true'
         env:
           EWM_GROWTH_AI_RESPONSE_FILE: /tmp/ai-response.json
           EWM_GROWTH_OUTPUT_FILE: /tmp/changed-urls.txt
-          EWM_GROWTH_MODEL: control-centre-workers-ai
+          EWM_GROWTH_MODEL: ${{ steps.inference.outputs.model }}
         run: node scripts/website-growth-agent.mjs
 
       - name: Re-run safety tests after generated change
@@ -176,9 +254,9 @@ jobs:
             if [ "${{ steps.candidate.outputs.has_candidate }}" != "true" ]; then
               echo "No unenriched low-risk article candidate remains."
             elif [ "${{ steps.inference.outputs.publish }}" != "true" ]; then
-              echo "The Business System returned no safe grounded visible change. Nothing was published."
+              echo "The available bounded inference route returned no safe grounded visible change. Nothing was published."
             else
-              echo "A bounded low-risk proposal was created from the private Business System AI, re-tested, committed to an ewm-growth branch and sent to independent Website Growth CI."
+              echo "A bounded low-risk proposal was created by ${{ steps.inference.outputs.model }}, re-tested, committed to an ewm-growth branch and sent to independent Website Growth CI."
               echo "Pull request: ${{ steps.pr.outputs.pr_url }}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
