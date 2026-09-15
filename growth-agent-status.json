@@ -3,9 +3,9 @@
   "active": true,
   "mode": "business-system-managed",
   "activatedAt": "2026-09-15T03:32:15.893Z",
-  "lastRunAt": null,
+  "lastRunAt": "2026-09-15T03:42:30.000Z",
   "model": "Energy With Mark Business System AI",
-  "sourceSha": "a1186e741c5356b46d1f423b31911cfe6aea2178",
+  "sourceSha": "946f5f6dccc432d9b0bab1fe3c362d0af7953076",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -14,7 +14,7 @@
     "maxVisiblePagesPerRun": 1,
     "reviewedPullRequestRequired": true
   },
-  "status": "active_waiting_for_first_business_system_run",
-  "lastAction": "Activated through the Energy With Mark Business System. The blocked Copilot CLI inference path has been retired; GitHub Actions now provides read-only repository guardrails while the Business System AI agent performs bounded research, review and publishing through pull requests.",
-  "lastChangedPath": null
+  "status": "published_low_risk",
+  "lastAction": "Improved the home battery sizing guide with a clearer search and AI-readable answer section plus FAQ structured data, using only facts already present on the published page. Updated the sitemap last-modified date for that article.",
+  "lastChangedPath": "articles/how-big-should-home-battery-be.html"
 }
