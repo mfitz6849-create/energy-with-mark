@@ -1,0 +1,34 @@
+# Energy With Mark
+
+Energy With Mark is the public solar, battery and energy-advice website of Mark Fitzpatrick, Renewable Energy Specialist in Australia.
+
+## Purpose
+The site explains solar, batteries, power bills and energy decisions in plain English. General website content is educational. Customer-specific recommendations require customer-specific information such as a recent electricity bill, site details, existing equipment and goals.
+
+## Primary pages
+- Home: https://energywithmark.com.au/
+- Homeowners: https://energywithmark.com.au/home.html
+- Businesses: https://energywithmark.com.au/business.html
+- Existing solar: https://energywithmark.com.au/existing-solar.html
+- Clubs and community: https://energywithmark.com.au/community.html
+- Knowledge hub: https://energywithmark.com.au/learn.html
+- Full calculator: https://energywithmark.com.au/calculator.html
+- Electricity bill review: https://energywithmark.com.au/upload-bill.html
+- Book a call: https://energywithmark.com.au/book.html
+- About Mark: https://energywithmark.com.au/how-i-help.html
+- Editorial and advice approach: https://energywithmark.com.au/editorial-policy.html
+- Service relationship disclosure: https://energywithmark.com.au/service-relationship.html
+- Privacy: https://energywithmark.com.au/privacy.html
+
+## Knowledge topics
+The knowledge hub contains evergreen guides about solar sizing, battery sizing, solar self-consumption, EV impacts, blackout backup expectations, commercial solar, demand charges, existing solar, electricity bills, proposals and assessment preparation.
+
+## Editorial boundary
+AI may help organise and improve public educational material, but adviser-approved facts remain authoritative. Time-sensitive government incentives, pricing, financial forecasts, product specifications, legal wording and customer-specific recommendations are not automatically published by the Website Growth Agent.
+
+## Author
+Mark Fitzpatrick — Renewable Energy Specialist
+https://energywithmark.com.au/how-i-help.html
+
+## Sitemap
+https://energywithmark.com.au/sitemap.xml
