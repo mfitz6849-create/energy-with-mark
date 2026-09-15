@@ -2,9 +2,9 @@
   "agent": "Website Growth Agent",
   "active": true,
   "mode": "automatic-low-risk",
-  "lastRunAt": "2026-09-15T03:13:11.946Z",
-  "model": "openai/gpt-5-mini",
-  "sourceSha": "73911b9f638dd7cfc54571472d36d207d03b1026",
+  "lastRunAt": "2026-09-15T03:16:43.888Z",
+  "model": "github-copilot-auto",
+  "sourceSha": "baf4e3286d70b643617c72eb8d4670c401658df4",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -13,6 +13,6 @@
     "maxVisiblePagesPerRun": 1
   },
   "status": "model_error",
-  "lastAction": "GitHub Models request failed with HTTP 410: {\"error\":{\"code\":\"github_models_retirement_brownout\",\"message\":\"GitHub Models is temporarily unavailable as part of a scheduled retirement brownout.\"}}\n",
+  "lastAction": "AI response did not contain a JSON object.",
   "lastChangedPath": null
 }
