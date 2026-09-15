@@ -57,7 +57,9 @@ jobs:
           grep -q '"maxVisiblePagesPerRun": 1' growth-agent-status.json
 
       - name: Independently verify a dispatched generated article diff
-        if: github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'ewm-growth/')
+        if: >-
+          (github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'ewm-growth/')) ||
+          (github.event_name == 'pull_request' && startsWith(github.head_ref, 'ewm-growth/'))
         shell: bash
         run: |
           set -euo pipefail
