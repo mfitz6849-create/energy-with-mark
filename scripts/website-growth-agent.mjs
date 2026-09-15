@@ -3,7 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const ROOT = process.cwd();
-const DEFAULT_MODEL = "github-copilot-auto";
+const DEFAULT_MODEL = "control-centre-workers-ai";
 const SAFE_ARTICLES = [
   "articles/how-big-should-home-battery-be.html",
   "articles/do-i-need-hybrid-inverter-for-battery.html",
@@ -147,6 +147,19 @@ async function preparePrompt(outputPath) {
   await fs.writeFile(outputPath, buildGrowthPrompt(articlePath, articleMap.get(articlePath)), "utf8");
 }
 
+async function prepareRequest(outputPath) {
+  const articleMap = await loadArticleMap();
+  const articlePath = chooseArticle(articleMap);
+  if (!articlePath) {
+    await fs.writeFile(outputPath, "", "utf8");
+    return;
+  }
+  const sourceSha = process.env.GITHUB_SHA || "";
+  if (!/^[0-9a-f]{40}$/i.test(sourceSha)) throw new Error("GITHUB_SHA is required to prepare a trusted Website Growth request.");
+  const pageText = stripHtml(articleMap.get(articlePath)).slice(0, 18000);
+  await fs.writeFile(outputPath, JSON.stringify({ pagePath: articlePath, pageText, sourceSha }) + "\n", "utf8");
+}
+
 async function writeStatus(status) {
   await fs.writeFile(path.join(ROOT, "growth-agent-status.json"), JSON.stringify(status, null, 2) + "\n", "utf8");
 }
@@ -164,7 +177,7 @@ async function main() {
   const baseStatus = {
     agent: "Website Growth Agent",
     active: true,
-    mode: "automatic-low-risk",
+    mode: "business-system-managed",
     lastRunAt: now.toISOString(),
     model,
     sourceSha,
@@ -173,7 +186,8 @@ async function main() {
       incentiveClaimsAutoPublish: false,
       legalClaimsAutoPublish: false,
       customerWorkflowWrites: false,
-      maxVisiblePagesPerRun: 1
+      maxVisiblePagesPerRun: 1,
+      reviewedPullRequestRequired: true
     }
   };
 
@@ -185,13 +199,19 @@ async function main() {
 
   let proposal;
   try {
-    if (!responseFile) throw new Error("No bounded Copilot response file was provided.");
+    if (!responseFile) throw new Error("No bounded AI response file was provided.");
     const responseText = await fs.readFile(responseFile, "utf8");
     proposal = extractJson(responseText);
   } catch (error) {
     await writeStatus({ ...baseStatus, status: "model_error", lastAction: error instanceof Error ? error.message : "Unknown AI response error", lastChangedPath: null });
     if (outputFile) await fs.writeFile(outputFile, "", "utf8");
     throw error;
+  }
+
+  if (proposal?.decision === "no_change") {
+    await writeStatus({ ...baseStatus, status: "healthy_no_change", lastAction: String(proposal.reason || "No safe grounded change was proposed.").slice(0, 500), lastChangedPath: null });
+    if (outputFile) await fs.writeFile(outputFile, "", "utf8");
+    return;
   }
 
   const validation = validateProposal(proposal);
@@ -232,8 +252,20 @@ async function main() {
 
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (invokedDirectly) {
+  const requestIndex = process.argv.indexOf("--prepare-request");
   const promptIndex = process.argv.indexOf("--prepare-prompt");
-  if (promptIndex >= 0) {
+  if (requestIndex >= 0) {
+    const outputPath = process.argv[requestIndex + 1];
+    if (!outputPath) {
+      console.error("--prepare-request requires an output path");
+      process.exitCode = 1;
+    } else {
+      prepareRequest(outputPath).catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+      });
+    }
+  } else if (promptIndex >= 0) {
     const outputPath = process.argv[promptIndex + 1];
     if (!outputPath) {
       console.error("--prepare-prompt requires an output path");
