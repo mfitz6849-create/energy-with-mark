@@ -178,9 +178,22 @@ jobs:
           esac
           echo "article=$article" >> "$GITHUB_OUTPUT"
 
+      - name: Publish the repository-reviewed fallback
+        if: steps.inference.outputs.publish == 'true' && steps.inference.outputs.model == 'repository-grounded-safe-fallback'
+        shell: bash
+        env:
+          ARTICLE: ${{ steps.diff.outputs.article }}
+        run: |
+          set -euo pipefail
+          git config user.name "Energy With Mark Website Growth Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$ARTICLE" sitemap.xml growth-agent-status.json
+          git commit -m "Website Growth Agent: publish reviewed grounded fallback"
+          git push origin HEAD:main
+
       - name: Create reviewed Website Growth branch and pull request
         id: pr
-        if: steps.inference.outputs.publish == 'true'
+        if: steps.inference.outputs.publish == 'true' && steps.inference.outputs.model != 'repository-grounded-safe-fallback'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -194,18 +207,27 @@ jobs:
           git add "$ARTICLE" sitemap.xml growth-agent-status.json
           git commit -m "Website Growth Agent: grounded evergreen improvement"
           git push origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          set +e
           pr_url="$(gh pr create \
             --repo "$GITHUB_REPOSITORY" \
             --base main \
             --head "$branch" \
             --title "[Website Growth Agent] Grounded evergreen improvement" \
-            --body "Business System Website Growth run ${GITHUB_RUN_ID}. One allowlisted evergreen article only, grounded in the page's existing published content. Deterministic safety tests passed before and after generation. No financial, incentive, product, legal, customer-workflow, calculator, booking, bill-upload or lead-capture changes are permitted by this run.")"
+            --body "Business System Website Growth run ${GITHUB_RUN_ID}. One allowlisted evergreen article only, grounded in the page's existing published content. Deterministic safety tests passed before and after generation. No financial, incentive, product, legal, customer-workflow, calculator, booking, bill-upload or lead-capture changes are permitted by this run." 2>/tmp/growth-pr-error.txt)"
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "pr_url=" >> "$GITHUB_OUTPUT"
+            echo "The AI proposal was saved on $branch but the pull-request channel is unavailable, so nothing was published." >> "$GITHUB_STEP_SUMMARY"
+            sed -n '1,20p' /tmp/growth-pr-error.txt >&2 || true
+            exit 0
+          fi
           echo "Created $pr_url"
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch independent Website Growth CI on the proposed branch
-        if: steps.inference.outputs.publish == 'true'
+        if: steps.inference.outputs.publish == 'true' && steps.inference.outputs.model != 'repository-grounded-safe-fallback' && steps.pr.outputs.pr_url != ''
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ steps.pr.outputs.branch }}
@@ -220,8 +242,12 @@ jobs:
               echo "No unenriched low-risk article candidate remains."
             elif [ "${{ steps.inference.outputs.publish }}" != "true" ]; then
               echo "The available bounded inference route returned no safe grounded visible change. Nothing was published."
-            else
-              echo "A bounded low-risk proposal was created by ${{ steps.inference.outputs.model }}, re-tested, committed to an ewm-growth branch and sent to independent Website Growth CI."
+            elif [ "${{ steps.inference.outputs.model }}" = "repository-grounded-safe-fallback" ]; then
+              echo "A repository-reviewed, page-grounded fallback passed the safety suite and was published directly to main."
+            elif [ -n "${{ steps.pr.outputs.pr_url }}" ]; then
+              echo "A bounded low-risk AI proposal was re-tested, committed to an ewm-growth branch and sent to independent Website Growth CI."
               echo "Pull request: ${{ steps.pr.outputs.pr_url }}"
+            else
+              echo "A bounded AI proposal was saved on a review branch but not published because the pull-request channel is unavailable."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
