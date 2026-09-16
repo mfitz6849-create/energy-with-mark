@@ -121,6 +121,7 @@ test("scheduled workflow uses private Business System AI with OIDC and bounded p
   assert.match(workflow, /repository-grounded-safe-fallback/);
   assert.match(workflow, /Publish the repository-reviewed fallback/);
   assert.match(workflow, /git push origin HEAD:main/);
+  assert.match(workflow, /gh workflow run indexnow\.yml/);
   assert.match(workflow, /model != 'repository-grounded-safe-fallback'/);
   assert.match(workflow, /pull-request channel is unavailable, so nothing was published/);
   assert.match(script, /DEFAULT_MODEL = "control-centre-workers-ai"/);
