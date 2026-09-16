@@ -8,7 +8,6 @@ permissions:
   pull-requests: write
   actions: write
   id-token: write
-  copilot-requests: write
 
 concurrency:
   group: website-growth-agent
@@ -100,55 +99,21 @@ jobs:
           console.log(`Business System decision: ${response.proposal.decision}`);
           NODE
 
-      - name: Install GitHub Copilot CLI fallback
-        if: steps.candidate.outputs.has_candidate == 'true' && steps.business_system.outputs.available != 'true'
-        run: npm install -g @github/copilot
-
-      - name: Prepare the bounded fallback prompt
-        if: steps.candidate.outputs.has_candidate == 'true' && steps.business_system.outputs.available != 'true'
-        run: node scripts/website-growth-agent.mjs --prepare-prompt /tmp/growth-agent-prompt.txt
-
-      - name: Ask Copilot for one grounded fallback proposal
-        id: copilot_fallback
+      - name: Prepare repository-grounded safe fallback
+        id: safe_fallback
         if: steps.candidate.outputs.has_candidate == 'true' && steps.business_system.outputs.available != 'true'
         shell: bash
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          set +e
-          copilot -p "$(cat /tmp/growth-agent-prompt.txt)" -s \
-            --deny-tool='write' \
-            --deny-tool='shell' \
-            > /tmp/growth-copilot-response.txt \
-            2> /tmp/growth-copilot-error.txt
-          code=$?
-          set -e
-          if [ "$code" -ne 0 ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
+          node scripts/website-growth-agent.mjs --prepare-fallback /tmp/growth-fallback-proposal.json
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          if [ -s /tmp/growth-fallback-proposal.json ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "The private AI route was unavailable; a repository-reviewed proposal grounded in the selected page will be used." >> "$GITHUB_STEP_SUMMARY"
+          else
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Copilot fallback failed safely with exit code $code." >> "$GITHUB_STEP_SUMMARY"
-            sed -n '1,60p' /tmp/growth-copilot-error.txt >&2 || true
-            exit 0
+            echo "The private AI route was unavailable and no reviewed fallback matched. Nothing will be published." >> "$GITHUB_STEP_SUMMARY"
           fi
-          node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import { extractJson, validateProposal } from "./scripts/website-growth-agent.mjs";
-          const proposal = extractJson(fs.readFileSync("/tmp/growth-copilot-response.txt", "utf8"));
-          if (proposal?.decision === "no_change") {
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\npublish=false\n");
-            process.exit(0);
-          }
-          const validation = validateProposal(proposal);
-          if (!validation.ok) {
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\npublish=false\n");
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Copilot fallback produced no publishable change and was blocked safely: ${validation.reason}\n`);
-            console.log(`Copilot fallback blocked safely: ${validation.reason}`);
-            process.exit(0);
-          }
-          fs.writeFileSync("/tmp/copilot-proposal.json", JSON.stringify(proposal));
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\npublish=true\n");
-          NODE
 
       - name: Select the bounded proposal
         id: inference
@@ -157,8 +122,8 @@ jobs:
         env:
           BUSINESS_AVAILABLE: ${{ steps.business_system.outputs.available }}
           BUSINESS_PUBLISH: ${{ steps.business_system.outputs.publish }}
-          COPILOT_AVAILABLE: ${{ steps.copilot_fallback.outputs.available }}
-          COPILOT_PUBLISH: ${{ steps.copilot_fallback.outputs.publish }}
+          FALLBACK_AVAILABLE: ${{ steps.safe_fallback.outputs.available }}
+          FALLBACK_PUBLISH: ${{ steps.safe_fallback.outputs.publish }}
         run: |
           set -euo pipefail
           if [ "$BUSINESS_AVAILABLE" = "true" ]; then
@@ -167,14 +132,14 @@ jobs:
             if [ "$BUSINESS_PUBLISH" = "true" ]; then cp /tmp/business-system-proposal.json /tmp/ai-response.json; fi
             exit 0
           fi
-          if [ "$COPILOT_AVAILABLE" = "true" ]; then
-            echo "publish=$COPILOT_PUBLISH" >> "$GITHUB_OUTPUT"
-            echo "model=github-copilot-auto-fallback" >> "$GITHUB_OUTPUT"
-            if [ "$COPILOT_PUBLISH" = "true" ]; then cp /tmp/copilot-proposal.json /tmp/ai-response.json; fi
+          if [ "$FALLBACK_AVAILABLE" = "true" ]; then
+            echo "publish=$FALLBACK_PUBLISH" >> "$GITHUB_OUTPUT"
+            echo "model=repository-grounded-safe-fallback" >> "$GITHUB_OUTPUT"
+            if [ "$FALLBACK_PUBLISH" = "true" ]; then cp /tmp/growth-fallback-proposal.json /tmp/ai-response.json; fi
             exit 0
           fi
-          echo "Neither bounded inference route was available." >&2
-          exit 1
+          echo "publish=false" >> "$GITHUB_OUTPUT"
+          echo "model=unavailable-safe-no-change" >> "$GITHUB_OUTPUT"
 
       - name: Apply one low-risk grounded improvement
         if: steps.inference.outputs.publish == 'true'
