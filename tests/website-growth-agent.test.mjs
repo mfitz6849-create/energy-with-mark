@@ -7,6 +7,7 @@ import {
   auditStaticDiscovery,
   buildGrowthPrompt,
   chooseArticle,
+  groundedFallbackProposal,
   updateSitemapLastmod,
   validateProposal,
 } from "../scripts/website-growth-agent.mjs";
@@ -91,6 +92,16 @@ test("discovery audit requires explicit AI search crawler, sitemap and AI site g
   assert.ok(missing.length >= 4);
 });
 
+
+test("repository-grounded fallback is available only for reviewed matching pages", () => {
+  const page = "<html><body>A recent electricity bill. The property address. Existing solar details. Future changes.</body></html>";
+  const proposal = groundedFallbackProposal("articles/what-information-needed-for-solar-assessment.html", page);
+  assert.equal(proposal?.decision, "publish");
+  assert.deepEqual(validateProposal(proposal), { ok: true, reason: "Safe grounded evergreen enrichment." });
+  assert.equal(groundedFallbackProposal("articles/what-information-needed-for-solar-assessment.html", "<html>missing anchors</html>"), null);
+  assert.equal(groundedFallbackProposal("articles/not-reviewed.html", page), null);
+});
+
 test("scheduled workflow uses private Business System AI with OIDC and bounded pull-request publishing", async () => {
   const [workflow, ci, autoMerge, script] = await Promise.all([
     read(".github/workflows/website-growth-agent.yml"),
@@ -103,10 +114,11 @@ test("scheduled workflow uses private Business System AI with OIDC and bounded p
   assert.match(workflow, /--prepare-request/);
   assert.match(workflow, /ewm-growth\/run-/);
   assert.match(workflow, /gh workflow run website-growth-agent-ci\.yml/);
-  assert.match(workflow, /copilot-requests: write/);
-  assert.match(workflow, /Install GitHub Copilot CLI fallback/);
-  assert.match(workflow, /steps\.business_system\.outputs\.available != 'true'/);
-  assert.match(workflow, /github-copilot-auto-fallback/);
+  assert.doesNotMatch(workflow, /copilot-requests: write/);
+  assert.doesNotMatch(workflow, /Install GitHub Copilot CLI fallback/);
+  assert.match(workflow, /Prepare repository-grounded safe fallback/);
+  assert.match(workflow, /--prepare-fallback/);
+  assert.match(workflow, /repository-grounded-safe-fallback/);
   assert.match(script, /DEFAULT_MODEL = "control-centre-workers-ai"/);
   assert.match(script, /mode: "business-system-managed"/);
   assert.match(ci, /workflow_dispatch:/);
