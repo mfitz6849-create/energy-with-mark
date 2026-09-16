@@ -7,6 +7,7 @@ import {
   auditStaticDiscovery,
   buildGrowthPrompt,
   chooseArticle,
+  groundedFallbackProposal,
   updateSitemapLastmod,
   validateProposal,
 } from "../scripts/website-growth-agent.mjs";
@@ -89,6 +90,16 @@ test("discovery audit requires explicit AI search crawler, sitemap and AI site g
 
   const missing = auditStaticDiscovery({ robots: "User-agent: *\nAllow: /\n", sitemap: "", llms: "", articlePath });
   assert.ok(missing.length >= 4);
+});
+
+
+test("repository-grounded fallback is available only for reviewed matching pages", () => {
+  const page = "<html><body>A recent electricity bill. The property address. Existing solar details. Future changes.</body></html>";
+  const proposal = groundedFallbackProposal("articles/what-information-needed-for-solar-assessment.html", page);
+  assert.equal(proposal?.decision, "publish");
+  assert.deepEqual(validateProposal(proposal), { ok: true, reason: "Safe grounded evergreen enrichment." });
+  assert.equal(groundedFallbackProposal("articles/what-information-needed-for-solar-assessment.html", "<html>missing anchors</html>"), null);
+  assert.equal(groundedFallbackProposal("articles/not-reviewed.html", page), null);
 });
 
 test("scheduled workflow uses private Business System AI with OIDC and bounded pull-request publishing", async () => {
