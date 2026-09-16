@@ -83,7 +83,7 @@ jobs:
           if [ "$status" != "200" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Private Business System runtime returned HTTP $status; the bounded Copilot fallback will be tried." >> "$GITHUB_STEP_SUMMARY"
+            echo "Private Business System runtime returned HTTP $status; the repository-grounded safe fallback will be tried." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           node - <<'NODE'
