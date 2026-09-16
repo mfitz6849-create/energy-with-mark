@@ -183,6 +183,7 @@ jobs:
         shell: bash
         env:
           ARTICLE: ${{ steps.diff.outputs.article }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git config user.name "Energy With Mark Website Growth Agent"
@@ -190,6 +191,7 @@ jobs:
           git add "$ARTICLE" sitemap.xml growth-agent-status.json
           git commit -m "Website Growth Agent: publish reviewed grounded fallback"
           git push origin HEAD:main
+          gh workflow run indexnow.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Create reviewed Website Growth branch and pull request
         id: pr
