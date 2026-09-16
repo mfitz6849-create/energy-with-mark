@@ -69,6 +69,70 @@ export function validateProposal(proposal) {
   return { ok: true, reason: "Safe grounded evergreen enrichment." };
 }
 
+
+const GROUNDED_FALLBACKS = {
+  "articles/what-information-needed-for-solar-assessment.html": {
+    anchors: ["recent electricity bill", "property address", "existing solar details", "future changes"],
+    proposal: {
+      decision: "publish",
+      summary: "You can begin with a recent electricity bill, the property address, details of any existing solar and a clear description of what you want help with. More detailed information can be added if the assessment shows it is needed.",
+      whatMatters: [
+        "A recent electricity bill is enough to begin the first review.",
+        "Existing solar details help explain what is already at the property.",
+        "Your goals and likely future changes guide the next questions."
+      ],
+      faq: [
+        { q: "Do I need to know the right system size first?", a: "No. The first review starts with your electricity use, property and goals. System size comes later in the assessment." },
+        { q: "What if I only have a recent electricity bill?", a: "That is enough to begin. If more detail is needed, Mark can explain exactly what information to provide next." }
+      ],
+      reason: "Repository-reviewed fallback grounded in the current assessment-information article."
+    }
+  },
+  "articles/what-is-solar-self-consumption.html": {
+    anchors: ["self-consumption", "exported", "battery", "load timing"],
+    proposal: {
+      decision: "publish",
+      summary: "Solar self-consumption is the solar electricity used at the property while the panels are producing. Understanding when energy is used helps show whether solar, load shifting or a battery may fit the way the property operates.",
+      whatMatters: [
+        "Daytime energy use can be supplied directly by solar generation.",
+        "Extra solar may be exported or stored for use later.",
+        "Load timing helps explain which design may suit the property."
+      ],
+      faq: [
+        { q: "How can a property use more of its own solar?", a: "Flexible loads can be moved into solar hours where practical, so more solar is used while the panels are producing." },
+        { q: "Does every property with exports need a battery?", a: "No. A battery is one option. The later energy use and available surplus solar should be understood first." }
+      ],
+      reason: "Repository-reviewed fallback grounded in the current self-consumption article."
+    }
+  },
+  "articles/why-i-need-your-electricity-bill.html": {
+    anchors: ["recent electricity bill", "existing solar exports", "commercial customers", "usage information"],
+    proposal: {
+      decision: "publish",
+      summary: "A recent electricity bill gives a factual starting point for understanding energy use, account structure and any existing solar exports. It helps identify what should be checked before equipment options are discussed.",
+      whatMatters: [
+        "The bill helps show how much electricity the property uses.",
+        "Existing solar exports can help explain the current energy pattern.",
+        "More detailed usage information may be needed for a complex project."
+      ],
+      faq: [
+        { q: "What can you learn from one electricity bill?", a: "It can provide a starting view of electricity use, account details and existing solar exports before further information is requested." },
+        { q: "Is one bill always enough for an assessment?", a: "It is enough to begin. Seasonal or complex projects may need more bills or detailed usage information before a recommendation is prepared." }
+      ],
+      reason: "Repository-reviewed fallback grounded in the current electricity-bill article."
+    }
+  }
+};
+
+export function groundedFallbackProposal(articlePath, articleHtml) {
+  const fallback = GROUNDED_FALLBACKS[articlePath];
+  if (!fallback) return null;
+  const pageText = stripHtml(articleHtml).toLowerCase();
+  if (!fallback.anchors.every((anchor) => pageText.includes(anchor))) return null;
+  const validation = validateProposal(fallback.proposal);
+  return validation.ok ? structuredClone(fallback.proposal) : null;
+}
+
 export function chooseArticle(articleMap) {
   for (const articlePath of SAFE_ARTICLES) {
     const html = articleMap.get(articlePath);
@@ -158,6 +222,13 @@ async function prepareRequest(outputPath) {
   if (!/^[0-9a-f]{40}$/i.test(sourceSha)) throw new Error("GITHUB_SHA is required to prepare a trusted Website Growth request.");
   const pageText = stripHtml(articleMap.get(articlePath)).slice(0, 18000);
   await fs.writeFile(outputPath, JSON.stringify({ pagePath: articlePath, pageText, sourceSha }) + "\n", "utf8");
+}
+
+async function prepareFallback(outputPath) {
+  const articleMap = await loadArticleMap();
+  const articlePath = chooseArticle(articleMap);
+  const proposal = articlePath ? groundedFallbackProposal(articlePath, articleMap.get(articlePath)) : null;
+  await fs.writeFile(outputPath, proposal ? JSON.stringify(proposal) + "\n" : "", "utf8");
 }
 
 async function writeStatus(status) {
@@ -253,6 +324,7 @@ async function main() {
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (invokedDirectly) {
   const requestIndex = process.argv.indexOf("--prepare-request");
+  const fallbackIndex = process.argv.indexOf("--prepare-fallback");
   const promptIndex = process.argv.indexOf("--prepare-prompt");
   if (requestIndex >= 0) {
     const outputPath = process.argv[requestIndex + 1];
@@ -261,6 +333,17 @@ if (invokedDirectly) {
       process.exitCode = 1;
     } else {
       prepareRequest(outputPath).catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+      });
+    }
+  } else if (fallbackIndex >= 0) {
+    const outputPath = process.argv[fallbackIndex + 1];
+    if (!outputPath) {
+      console.error("--prepare-fallback requires an output path");
+      process.exitCode = 1;
+    } else {
+      prepareFallback(outputPath).catch((error) => {
         console.error(error);
         process.exitCode = 1;
       });
