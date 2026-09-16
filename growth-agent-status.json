@@ -2,9 +2,9 @@
   "agent": "Website Growth Agent",
   "active": true,
   "mode": "business-system-managed",
-  "lastRunAt": "2026-09-16T03:44:36.799Z",
+  "lastRunAt": "2026-09-16T03:46:51.188Z",
   "model": "repository-grounded-safe-fallback",
-  "sourceSha": "5fb04ca2f591f8672bb1b2fc657ef49e89611d89",
+  "sourceSha": "fc17d625be9adcfc0c2a4421c6e13d03bc50c22f",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -14,7 +14,7 @@
     "reviewedPullRequestRequired": true
   },
   "status": "published_low_risk",
-  "lastAction": "Added grounded answer and FAQ enrichment to articles/what-information-needed-for-solar-assessment.html.",
-  "lastChangedPath": "articles/what-information-needed-for-solar-assessment.html",
-  "reason": "Repository-reviewed fallback grounded in the current assessment-information article."
+  "lastAction": "Added grounded answer and FAQ enrichment to articles/what-is-solar-self-consumption.html.",
+  "lastChangedPath": "articles/what-is-solar-self-consumption.html",
+  "reason": "Repository-reviewed fallback grounded in the current self-consumption article."
 }
