@@ -2,9 +2,9 @@
   "agent": "Website Growth Agent",
   "active": true,
   "mode": "business-system-managed",
-  "lastRunAt": "2026-09-15T23:01:49.000Z",
-  "model": "ChatGPT GitHub Connector Fallback",
-  "sourceSha": "85dc3dbae7faa87c33bf5437633dde123191c2cd",
+  "lastRunAt": "2026-09-16T03:44:36.799Z",
+  "model": "repository-grounded-safe-fallback",
+  "sourceSha": "5fb04ca2f591f8672bb1b2fc657ef49e89611d89",
   "safety": {
     "financialClaimsAutoPublish": false,
     "incentiveClaimsAutoPublish": false,
@@ -14,7 +14,7 @@
     "reviewedPullRequestRequired": true
   },
   "status": "published_low_risk",
-  "lastAction": "Added grounded answer and FAQ enrichment to articles/how-ev-changes-solar-sizing.html.",
-  "lastChangedPath": "articles/how-ev-changes-solar-sizing.html",
-  "reason": "Clarifies how travel, charging time and daytime solar availability should guide solar and battery sizing using only the article’s existing guidance."
+  "lastAction": "Added grounded answer and FAQ enrichment to articles/what-information-needed-for-solar-assessment.html.",
+  "lastChangedPath": "articles/what-information-needed-for-solar-assessment.html",
+  "reason": "Repository-reviewed fallback grounded in the current assessment-information article."
 }
