@@ -113,3 +113,26 @@ jobs:
         run: |
           set -euo pipefail
           test -s conversion-v1-base.js
+
+      - name: Verify deployed public site carries the V3 intake cutover
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
+          conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
+          booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
+
+          for attempt in $(seq 1 15); do
+            echo "Live-site smoke attempt $attempt/15"
+            curl -fsS -H 'Cache-Control: no-cache' "$conversion_url" -o /tmp/live-conversion.js || true
+            curl -fsS -H 'Cache-Control: no-cache' "$booking_url" -o /tmp/live-book.html || true
+            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null; then
+              echo "Live public site contains the native V3 intake contract."
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "The Pages deployment did not expose the V3 intake cutover within the smoke-test window."
+          exit 1
