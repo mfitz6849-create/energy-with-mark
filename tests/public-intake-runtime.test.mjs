@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 
 const runtime = readFileSync(new URL('../conversion-v1.js', import.meta.url), 'utf8');
 const core = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
+const contact = readFileSync(new URL('../contact.html', import.meta.url), 'utf8');
+const booking = readFileSync(new URL('../book.html', import.meta.url), 'utf8');
 
 function functionBody(name, nextName) {
   const start = runtime.indexOf(`const ${name} =`);
@@ -57,6 +59,29 @@ test('bill upload replaces the legacy submit handler and confirms receipt before
   assert.ok(verification > clone, 'bill upload must use verified acknowledgement');
   assert.ok(receipt > verification, 'receipt must only display after acknowledgement');
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
+});
+
+
+test('general enquiry uses the verified assessment transport and waits for acknowledgement', () => {
+  const body = functionBody('hardenGeneralEnquiry', 'init');
+  const verification = body.indexOf('await verifiedIframeSubmit');
+  const success = body.indexOf("successBox.style.display = 'block'");
+  assert.ok(verification >= 0, 'general enquiry must await verified intake');
+  assert.ok(success > verification, 'enquiry success must occur after acknowledgement');
+  assert.match(body, /sourcePage: '\/contact\.html'/);
+  assert.match(body, /expectedSource: 'energy-with-mark-assessment-submit'/);
+  assert.match(body, /website: clean\(fd\.get\('website'\)\)/);
+  assert.match(runtime, /hardenGeneralEnquiry\(\)/);
+});
+
+test('contact and booking collect enough site and consent context for V3', () => {
+  assert.match(contact, /data-form-type="enquiry"/);
+  assert.match(contact, /name="postcode"[^>]*required/);
+  assert.match(contact, /name="privacyAcknowledged"[^>]*required/);
+  assert.match(booking, /name="postcode"[^>]*required/);
+  assert.match(booking, /sourcePage:'\/book\.html'/);
+  assert.match(booking, /energy-with-mark-booking-submit/);
+  assert.doesNotMatch(runtime + contact + booking, /intake\.energywithmark\.com\.au/);
 });
 
 test('existing-solar context is collected and carried across the customer journey', () => {
