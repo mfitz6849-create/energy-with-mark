@@ -10,6 +10,8 @@ const billPage = readFileSync(new URL('../upload-bill.html', import.meta.url), '
 const homePage = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const calculatorPage = readFileSync(new URL('../calculator.html', import.meta.url), 'utf8');
 const exampleAssessment = readFileSync(new URL('../example-assessment.html', import.meta.url), 'utf8');
+const quickFallback = readFileSync(new URL('../quick-solar-check.js', import.meta.url), 'utf8');
+const calculatorFallback = readFileSync(new URL('../calculator-v2.js', import.meta.url), 'utf8');
 
 function functionBody(name, nextName) {
   const start = runtime.indexOf(`const ${name} =`);
@@ -172,4 +174,20 @@ test('public example mirrors the single-property backend initial-assessment shap
   assert.match(exampleAssessment, /Likely options/);
   assert.match(exampleAssessment, /What we still need to confirm/);
   assert.match(exampleAssessment, /Likely paths forward/);
+});
+
+
+test('quick-check and calculator fallbacks cannot escape native V3 intake', () => {
+  assert.match(runtime, /button\.dataset\.ewmV3Hardened = 'true'/);
+  for (const source of [quickFallback, calculatorFallback]) {
+    assert.match(source, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+    assert.match(source, /mode: 'cors'/);
+    assert.match(source, /'Idempotency-Key': requestId/);
+    assert.match(source, /dataset\.ewmV3Hardened === 'true'/);
+    assert.match(source, /!response\.ok \|\| !body\?\.ok/);
+    assert.doesNotMatch(source, /script\.google\.com/);
+    assert.doesNotMatch(source, /mode:\s*'no-cors'/);
+  }
+  assert.match(quickFallback, /kind: 'quick_check'/);
+  assert.match(calculatorFallback, /kind: 'calculator'/);
 });

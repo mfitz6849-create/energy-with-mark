@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwODBPWtpOHekwSVCMoEgReUiHTOFsh4kVsRq3fCJDvocAs34gqTOBrkjW3KuLubXA/exec';
+  const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const form = document.getElementById('fullSolarCalculator');
   if (!form) return;
 
@@ -10,6 +11,37 @@
   const money = (value) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(Math.round(value || 0));
   const number = (value) => new Intl.NumberFormat('en-AU', { maximumFractionDigits: 1 }).format(value || 0);
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function makeRequestId(prefix) {
+    let randomPart = '';
+    try {
+      if (window.crypto?.getRandomValues) {
+        randomPart = Array.from(window.crypto.getRandomValues(new Uint32Array(2))).map(value => value.toString(36)).join('');
+      }
+    } catch (_) {}
+    if (!randomPart) randomPart = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return (`ewm-${prefix}-${Date.now().toString(36)}-${randomPart}`).slice(0, 78);
+  }
+
+  function customerType(property) {
+    return { home: 'Homeowner', business: 'Business owner', community: 'Sporting or community organisation', farm: 'Other' }[property] || 'Other';
+  }
+
+  function billingPeriod(frequency) {
+    return { monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Other' }[frequency] || 'Other';
+  }
+
+  async function submitV3(payload, requestId) {
+    const response = await fetch(V3_INTAKE_ENDPOINT, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestId },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body?.ok) throw new Error(body?.message || 'The result could not be confirmed.');
+    return body;
+  }
 
   const defaults = {
     home: { label: 'home', rate: .35, supply: 1.2, day: .45, min: 3.3, max: 30, solarBase: 1000, solarPerKw: 1050, batteryBase: 1800, batteryPerKwh: 1050, batteryMax: 50 },
@@ -196,6 +228,9 @@
   }
 
   async function saveLead() {
+    const button = $('#saveResult');
+    if (button?.dataset.ewmV3Hardened === 'true') return;
+
     const name = $('#leadName').value.trim();
     const phone = $('#leadPhone').value.trim();
     const email = $('#leadEmail').value.trim();
@@ -204,14 +239,13 @@
     const error = $('#leadError');
     if (!name || !phone || !email || !address) { error.textContent = 'Enter your name, mobile, email and property address.'; return; }
     if (!/^\S+@\S+\.\S+$/.test(email)) { error.textContent = 'Enter a valid email address.'; return; }
-    if (!consent) { error.textContent = 'Please confirm that Mark may contact you.'; return; }
+    if (!consent) { error.textContent = 'Please read the privacy policy and confirm that Mark may contact you.'; return; }
     error.textContent = '';
-    const button = $('#saveResult');
     button.disabled = true;
-    button.textContent = 'Saving…';
+    button.textContent = 'Confirming your result…';
 
     const lead = {
-      submittedAt: new Date().toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' }),
+      submittedAt: new Date().toISOString(),
       name, phone, email, address,
       postcode: $('#postcode').value.trim(),
       property: defaults[result.property].label,
@@ -227,13 +261,51 @@
       source: 'Energy With Mark Full Solar Calculator'
     };
 
+    const existingSolar = selected('existingSolar');
+    const requestId = makeRequestId('calculator');
+    const payload = {
+      kind: 'calculator',
+      clientRequestId: requestId,
+      name,
+      phone,
+      email,
+      address,
+      postcode: lead.postcode,
+      customerType: customerType(result.property),
+      helpRequested: existingSolar === 'yes' ? 'Existing solar' : result.batteryChoice === 'no' ? 'Solar' : 'Solar + battery',
+      existingSolar: existingSolar === 'yes' ? 'Yes' : existingSolar === 'no' ? 'No' : 'Not sure',
+      billAmount: String(Math.round(result.bill)),
+      goals: [lead.goal || 'Understand whether solar or battery makes financial sense'],
+      billingPeriod: billingPeriod($('#billFrequency').value),
+      solarSize: $('#existingSize')?.value?.trim() || '',
+      batteryInterest: result.batteryChoice === 'no' ? 'No' : 'Yes',
+      sourcePage: '/calculator.html',
+      landingPage: '/calculator.html',
+      pageUrl: window.location.href,
+      referrer: document.referrer || '',
+      privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+      privacyAcknowledged: true,
+      context: {
+        journey: 'full_calculator_fallback',
+        state: lead.state,
+        property: result.property,
+        annualBill: lead.annualBill,
+        estimatedUsageKwh: lead.estimatedUsageKwh,
+        solarRecommendationKw: lead.solarRecommendationKw,
+        batteryRecommendationKwh: lead.batteryRecommendationKwh,
+        estimatedAnnualSavings: lead.estimatedAnnualSavings,
+        estimatedPaybackYears: lead.estimatedPaybackYears,
+        systemPlan: lead.systemPlan
+      }
+    };
+
     try {
-      await fetch(LEAD_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(lead) });
+      await submitV3(payload, requestId);
       $('#leadFields').classList.add('hidden');
       $('#savedPanel').classList.remove('hidden');
-      try { window.gtag?.('event', 'generate_lead', { form_type: 'full_solar_calculator' }); } catch (_) {}
-    } catch (err) {
-      error.textContent = 'The result could not be saved. Please call Mark on 0434 151 237.';
+      try { window.gtag?.('event', 'generate_lead', { form_type: 'full_solar_calculator', acknowledgement: 'v3_fallback' }); } catch (_) {}
+    } catch (cause) {
+      error.textContent = cause instanceof Error ? cause.message : 'The result could not be confirmed. Please call Mark on 0434 151 237.';
       button.disabled = false;
       button.textContent = 'Save My Result';
     }
