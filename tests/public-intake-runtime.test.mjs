@@ -16,63 +16,87 @@ function functionBody(name, nextName) {
   return runtime.slice(start, end);
 }
 
-test('core runtime always loads the verified conversion layer', () => {
+test('core runtime always loads the conversion layer', () => {
   assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js'\)/);
   assert.match(core, /document\.body\.appendChild\(conversionScript\)/);
 });
 
-test('verified iframe acknowledgement fails closed on origin, source, request id and backend result', () => {
-  const body = functionBody('verifiedIframeSubmit', 'assessmentPayload');
+test('native V3 transport is CORS, idempotency and acknowledgement guarded', () => {
+  assert.match(runtime, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+  const body = functionBody('directV3Submit', 'assessmentToV3');
+  assert.match(body, /fetch\(V3_INTAKE_ENDPOINT/);
+  assert.match(body, /mode: 'cors'/);
+  assert.match(body, /'Idempotency-Key': requestId/);
+  assert.match(body, /AbortController/);
+  assert.match(body, /!response\.ok \|\| !body\?\.ok/);
+});
+
+test('legacy iframe acknowledgement remains restricted to bill-file transport', () => {
+  const body = functionBody('verifiedIframeSubmit', 'directV3Submit');
+  assert.match(body, /LEGACY_BILL_ENDPOINT/);
   assert.match(body, /event\.origin === 'https:\/\/script\.google\.com'/);
   assert.match(body, /event\.origin\.endsWith\('\.googleusercontent\.com'\)/);
   assert.match(body, /message\.source !== expectedSource/);
   assert.match(body, /result\.requestId !== payload\?\.fields\?\.clientRequestId/);
   assert.match(body, /if \(!result\.ok\)/);
-  assert.match(body, /setTimeout\(\(\) => fail\(/);
+  assert.doesNotMatch(runtime, /energy-with-mark-assessment-submit/);
 });
 
-test('quick-check success is shown only after verified assessment acknowledgement', () => {
+test('quick-check success is shown only after native V3 acknowledgement', () => {
   const body = functionBody('hardenQuickLead', 'hardenFullCalculatorLead');
-  const verification = body.indexOf('await verifiedIframeSubmit');
+  const verification = body.indexOf("await directV3Submit(assessmentToV3('quick_check'");
   const success = body.indexOf("document.getElementById('quickSuccess')?.classList.remove('hidden')");
-  assert.ok(verification >= 0, 'quick check must await verified intake');
-  assert.ok(success > verification, 'quick success must occur after acknowledgement');
+  assert.ok(verification >= 0, 'quick check must await V3 intake');
+  assert.ok(success > verification, 'quick success must occur after V3 acknowledgement');
   assert.match(body, /replaceButton\('quickLeadButton'\)/);
-  assert.match(body, /expectedSource: 'energy-with-mark-assessment-submit'/);
+  assert.match(body, /journey: '60_second_check'/);
 });
 
-test('full-calculator success is shown only after verified assessment acknowledgement', () => {
+test('full-calculator success is shown only after native V3 acknowledgement', () => {
   const body = functionBody('hardenFullCalculatorLead', 'addBillExistingSolarFields');
-  const verification = body.indexOf('await verifiedIframeSubmit');
+  const verification = body.indexOf("await directV3Submit(assessmentToV3('calculator'");
   const success = body.indexOf("document.getElementById('savedPanel')?.classList.remove('hidden')");
-  assert.ok(verification >= 0, 'full calculator must await verified intake');
-  assert.ok(success > verification, 'calculator success must occur after acknowledgement');
+  assert.ok(verification >= 0, 'full calculator must await V3 intake');
+  assert.ok(success > verification, 'calculator success must occur after V3 acknowledgement');
   assert.match(body, /replaceButton\('saveResult'\)/);
-  assert.match(body, /expectedSource: 'energy-with-mark-assessment-submit'/);
+  assert.match(body, /journey: 'full_calculator'/);
 });
 
-test('bill upload replaces the legacy submit handler and confirms receipt before showing the receipt panel', () => {
-  const body = functionBody('hardenBillUpload', 'init');
+test('bill upload confirms the private file receipt then links the assessment to V3', () => {
+  const body = functionBody('hardenBillUpload', 'hardenGeneralEnquiry');
   const clone = body.indexOf('const form = oldForm.cloneNode(true)');
-  const verification = body.indexOf('await verifiedIframeSubmit');
+  const fileReceipt = body.indexOf('const uploadReceipt = await verifiedIframeSubmit');
+  const v3Receipt = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
   const receipt = body.indexOf("receiptPanel.style.display = 'block'");
   assert.ok(clone >= 0, 'bill upload must replace the legacy form listeners');
-  assert.ok(verification > clone, 'bill upload must use verified acknowledgement');
-  assert.ok(receipt > verification, 'receipt must only display after acknowledgement');
+  assert.ok(fileReceipt > clone, 'bill upload must first verify its file receipt');
+  assert.ok(v3Receipt > fileReceipt, 'bill upload must link to V3 after the file receipt');
+  assert.ok(receipt > v3Receipt, 'receipt panel must wait for both acknowledgements');
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
+  assert.match(body, /legacyUploadConfirmed: true/);
+  assert.match(body, /Please do not send the bill again/);
 });
 
-
-test('general enquiry uses the verified assessment transport and waits for acknowledgement', () => {
+test('general enquiry goes directly to V3 and waits for acknowledgement', () => {
   const body = functionBody('hardenGeneralEnquiry', 'init');
-  const verification = body.indexOf('await verifiedIframeSubmit');
+  const verification = body.indexOf("await directV3Submit(assessmentToV3('enquiry'");
   const success = body.indexOf("successBox.style.display = 'block'");
-  assert.ok(verification >= 0, 'general enquiry must await verified intake');
+  assert.ok(verification >= 0, 'general enquiry must await V3 intake');
   assert.ok(success > verification, 'enquiry success must occur after acknowledgement');
   assert.match(body, /sourcePage: '\/contact\.html'/);
-  assert.match(body, /expectedSource: 'energy-with-mark-assessment-submit'/);
-  assert.match(body, /website: clean\(fd\.get\('website'\)\)/);
+  assert.match(body, /journey: 'general_enquiry'/);
   assert.match(runtime, /hardenGeneralEnquiry\(\)/);
+});
+
+test('booking requests go directly to V3 and remain requested until confirmed', () => {
+  assert.match(booking, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+  assert.match(booking, /kind:'appointment_request'/);
+  assert.match(booking, /'Idempotency-Key':requestId/);
+  assert.match(booking, /await submitV3\(payload,requestId\)/);
+  assert.match(booking, /preferredDate:get\('preferredDate'\)/);
+  assert.match(booking, /preferredTime:get\('preferredTime'\)/);
+  assert.match(booking, /postcode:get\('postcode'\)/);
+  assert.doesNotMatch(booking, /script\.google\.com/);
 });
 
 test('public intake journeys collect enough site and consent context for V3', () => {
@@ -80,11 +104,9 @@ test('public intake journeys collect enough site and consent context for V3', ()
   assert.match(contact, /name="postcode"[^>]*required/);
   assert.match(contact, /name="privacyAcknowledged"[^>]*required/);
   assert.match(booking, /name="postcode"[^>]*required/);
-  assert.match(booking, /sourcePage:'\/book\.html'/);
-  assert.match(booking, /energy-with-mark-booking-submit/);
   assert.match(billPage, /name="postcode"[^>]*required/);
   assert.doesNotMatch(billPage, /Postcode[^<]*<span[^>]*>\(optional\)/i);
-  assert.doesNotMatch(runtime + contact + booking + billPage, /intake\.energywithmark\.com\.au/);
+  assert.match(runtime + booking, /intake\.energywithmark\.com\.au/);
 });
 
 test('existing-solar context is collected and carried across the customer journey', () => {

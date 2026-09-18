@@ -45,18 +45,59 @@ jobs:
       - name: Run behavioral public intake regression tests
         run: node --test tests/public-intake-runtime.test.mjs
 
-      - name: Verify acknowledgement contracts remain present
+      - name: Verify V3 acknowledgement contracts remain present
         run: |
           set -euo pipefail
-          grep -q "energy-with-mark-assessment-submit" conversion-v1.js
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
+          grep -q "directV3Submit" conversion-v1.js
           grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
-          grep -q "energy-with-mark-booking-submit" book.html
+          ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
+          ! grep -q "script.google.com" book.html
           grep -q "hardenQuickLead" conversion-v1.js
           grep -q "hardenFullCalculatorLead" conversion-v1.js
           grep -q "hardenBillUpload" conversion-v1.js
           grep -q "hardenGeneralEnquiry" conversion-v1.js
           grep -q 'data-form-type="enquiry"' contact.html
           grep -q 'name="postcode"' book.html
+
+      - name: Verify production V3 intake route without creating a lead
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
+          origin="https://energywithmark.com.au"
+
+          root_status="$(curl -sS -o /tmp/ewm-root-body -D /tmp/ewm-root-headers -w '%{http_code}' "https://intake.energywithmark.com.au/")"
+          echo "Intake hostname root status: $root_status"
+          sed -n '1,20p' /tmp/ewm-root-headers
+          cat /tmp/ewm-root-body || true
+          # The hostname root may remain protected by Cloudflare Access. The public
+          # contract is the exact intake path below, not the hostname root.
+          test "$root_status" != "200"
+
+          options_status="$(curl -sS -o /tmp/ewm-options-body -D /tmp/ewm-options-headers -w '%{http_code}' -X OPTIONS "$endpoint" \
+            -H "Origin: $origin" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type,idempotency-key")"
+          echo "OPTIONS status: $options_status"
+          sed -n '1,20p' /tmp/ewm-options-headers
+          cat /tmp/ewm-options-body || true
+          test "$options_status" = "204"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-options-headers
+
+          invalid_status="$(curl -sS -o /tmp/ewm-invalid-body -D /tmp/ewm-invalid-headers -w '%{http_code}' -X POST "$endpoint" \
+            -H "Origin: $origin" \
+            -H "Content-Type: application/json" \
+            -H "Idempotency-Key: ci-no-write-connectivity-check" \
+            --data '{}')"
+          echo "Invalid POST status: $invalid_status"
+          sed -n '1,20p' /tmp/ewm-invalid-headers
+          cat /tmp/ewm-invalid-body || true
+          test "$invalid_status" = "400"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-invalid-headers
+          grep -q '"ok":false' /tmp/ewm-invalid-body
+          grep -q 'Please provide your name, phone, valid email and consent' /tmp/ewm-invalid-body
 
       - name: Verify existing-solar assessment path remains present
         run: |
