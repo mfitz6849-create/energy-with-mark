@@ -3,6 +3,7 @@
 
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
+  const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const form = document.getElementById('fullSolarCalculator');
   if (!form) return;
 
@@ -285,6 +286,8 @@
       referrer: document.referrer || '',
       privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
       privacyAcknowledged: true,
+      marketingConsentAccepted: Boolean(document.querySelector('#fullSolarCalculator input[name="marketingConsent"]')?.checked),
+      marketingConsentVersion: document.querySelector('#fullSolarCalculator input[name="marketingConsent"]')?.checked ? MARKETING_CONSENT_VERSION : '',
       context: {
         journey: 'full_calculator_fallback',
         state: lead.state,
