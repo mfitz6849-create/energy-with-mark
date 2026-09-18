@@ -110,6 +110,15 @@ if (navLinks) {
     link.textContent = 'Clubs & Community';
     navLinks.appendChild(link);
   }
+  const hasAskMark = [...navLinks.querySelectorAll('a[href]')].some(link => {
+    try { return new URL(link.href, window.location.href).pathname === '/contact.html'; } catch (_) { return false; }
+  });
+  if (!hasAskMark) {
+    const askMark = document.createElement('a');
+    askMark.href = siteUrl('contact.html');
+    askMark.textContent = 'Ask Mark';
+    navLinks.appendChild(askMark);
+  }
 }
 
 if (navToggle && navLinks) {
