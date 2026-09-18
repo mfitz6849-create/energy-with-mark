@@ -126,8 +126,12 @@ test('public property wording is clear and the example assessment is a working d
   assert.match(calculatorPage, /Tell us about your property/);
   assert.doesNotMatch(calculatorPage, /Tell us about your place/);
   assert.match(billPage, /href="example-assessment\.html">See an Example Assessment/);
-  assert.match(exampleAssessment, /Example assessment/);
-  assert.match(exampleAssessment, /Example only · Not a quote/);
+  assert.match(exampleAssessment, /Anonymous example based on a real multi-property assessment/);
+  assert.match(exampleAssessment, /Strong solar opportunity/);
+  assert.match(exampleAssessment, /Solar system check first/);
+  assert.match(exampleAssessment, /Smaller solar opportunity/);
+  assert.match(exampleAssessment, /Page 1 of 7/);
+  assert.match(core, /See Example Assessment/);
   assert.match(core, /example-assessment\.html/);
 });
 

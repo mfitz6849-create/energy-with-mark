@@ -293,6 +293,32 @@ document.querySelectorAll('a,button').forEach(control => {
   }
 });
 
+// Surface the real-format anonymous example wherever the public journey offers a
+// Full Energy Assessment. This keeps the example visible across the site without
+// forcing every page to duplicate the markup.
+if (window.location.pathname !== '/example-assessment.html') {
+  document.querySelectorAll('.btns').forEach(group => {
+    const assessmentLink = group.querySelector('a[href*="upload-bill.html"]');
+    if (!assessmentLink || group.querySelector('a[href*="example-assessment.html"]')) return;
+    const example = document.createElement('a');
+    example.href = siteUrl('example-assessment.html');
+    example.className = 'btn btn-secondary';
+    example.textContent = 'See Example Assessment';
+    group.appendChild(example);
+  });
+}
+document.querySelectorAll('.footer-grid > div').forEach(section => {
+  const heading = section.querySelector('h3');
+  if (!heading || !/your next step/i.test(heading.textContent || '')) return;
+  if (section.querySelector('a[href*="example-assessment.html"]')) return;
+  const paragraph = section.querySelector('p') || section.appendChild(document.createElement('p'));
+  if ((paragraph.textContent || '').trim()) paragraph.appendChild(document.createElement('br'));
+  const example = document.createElement('a');
+  example.href = siteUrl('example-assessment.html');
+  example.textContent = 'Example Assessment';
+  paragraph.appendChild(example);
+});
+
 function sendAnalyticsEvent(name, params = {}) {
   if (typeof window.gtag !== 'function') return;
   window.gtag('event', name, { page_path: window.location.pathname, ...params });
