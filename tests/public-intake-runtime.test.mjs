@@ -126,11 +126,16 @@ test('public property wording is clear and the example assessment is a working d
   assert.match(calculatorPage, /Tell us about your property/);
   assert.doesNotMatch(calculatorPage, /Tell us about your place/);
   assert.match(billPage, /href="example-assessment\.html">See an Example Assessment/);
-  assert.match(exampleAssessment, /Anonymous example using the real Energy With Mark assessment format/);
+  assert.match(exampleAssessment, /Example Energy Assessment/);
+  assert.match(exampleAssessment, /See how your assessment is presented/);
+  assert.match(exampleAssessment, /single-property example/);
+  assert.match(exampleAssessment, /Illustrative example only/);
   assert.match(exampleAssessment, /Strong solar opportunity/);
-  assert.match(exampleAssessment, /Solar system check first/);
-  assert.match(exampleAssessment, /Smaller solar opportunity/);
-  assert.match(exampleAssessment, /Page 1 of 7/);
+  assert.match(exampleAssessment, /Page 1 of 3/);
+  assert.match(exampleAssessment, /Page 2 of 3/);
+  assert.match(exampleAssessment, /Page 3 of 3/);
+  assert.doesNotMatch(exampleAssessment, /Property B/);
+  assert.doesNotMatch(exampleAssessment, /Property C/);
   assert.match(core, /See Example Assessment/);
   assert.match(core, /example-assessment\.html/);
 });
@@ -157,4 +162,14 @@ test('example assessment has one clear top action group without a duplicate stic
   assert.doesNotMatch(exampleAssessment, /assessment-example-actions/);
   assert.equal((exampleAssessment.match(/Start My Free Assessment/g) || []).length, 1);
   assert.match(exampleAssessment, /Print \/ Save Example/);
+});
+
+
+test('public example mirrors the single-property backend initial-assessment shape', () => {
+  assert.equal((exampleAssessment.match(/<article class="assessment-page/g) || []).length, 3);
+  assert.match(exampleAssessment, /What the bills show/);
+  assert.match(exampleAssessment, /Annual snapshot/);
+  assert.match(exampleAssessment, /Likely options/);
+  assert.match(exampleAssessment, /What we still need to confirm/);
+  assert.match(exampleAssessment, /Likely paths forward/);
 });
