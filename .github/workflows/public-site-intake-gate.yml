@@ -69,6 +69,9 @@ jobs:
             -H "Origin: $origin" \
             -H "Access-Control-Request-Method: POST" \
             -H "Access-Control-Request-Headers: content-type,idempotency-key")"
+          echo "OPTIONS status: $options_status"
+          sed -n '1,20p' /tmp/ewm-options-headers
+          cat /tmp/ewm-options-body || true
           test "$options_status" = "204"
           grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-options-headers
 
@@ -77,6 +80,9 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Idempotency-Key: ci-no-write-connectivity-check" \
             --data '{}')"
+          echo "Invalid POST status: $invalid_status"
+          sed -n '1,20p' /tmp/ewm-invalid-headers
+          cat /tmp/ewm-invalid-body || true
           test "$invalid_status" = "400"
           grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-invalid-headers
           grep -q '"ok":false' /tmp/ewm-invalid-body
