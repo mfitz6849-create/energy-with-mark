@@ -128,7 +128,7 @@
   const assessmentPayload = ({
     sourcePage, customerType, postcode, helpWith, goals, billAmount, billingPeriod,
     existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
-    notes, requestId
+    notes, requestId, website = ''
   }) => ({
     type: 'assessment',
     source: 'Energy With Mark Website',
@@ -139,7 +139,7 @@
       inverter, highExports: '', usagePattern: '', evStatus: '', businessName: '',
       businessType: '', startTime: '', finishTime: '', hasIntervalData: '',
       batteryInterest: '', backupImportance: '', futureNeeds: [],
-      preferredContact: 'Phone', notes, website: '',
+      preferredContact: 'Phone', notes, website,
       privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
       privacyAcknowledged: true,
       sourcePage, landingPage: sourcePage, pageUrl: window.location.href,
@@ -516,6 +516,69 @@
     });
   };
 
+  const hardenGeneralEnquiry = () => {
+    const oldForm = document.querySelector('form[data-form-type="enquiry"]');
+    if (!oldForm) return;
+
+    const form = oldForm.cloneNode(true);
+    oldForm.replaceWith(form);
+    const button = form.querySelector('[type="submit"]');
+    const errorBox = form.querySelector('.form-error');
+    const statusBox = form.querySelector('.submit-status');
+    const successBox = form.querySelector('.success');
+    const showError = message => {
+      if (statusBox) statusBox.textContent = '';
+      if (errorBox) { errorBox.textContent = message; errorBox.style.display = 'block'; }
+      if (button) button.disabled = false;
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      if (errorBox) errorBox.style.display = 'none';
+      if (successBox) successBox.style.display = 'none';
+
+      const fd = new FormData(form);
+      const name = clean(fd.get('name'));
+      const phone = clean(fd.get('phone'));
+      const email = clean(fd.get('email'));
+      const postcode = clean(fd.get('postcode'));
+      const consent = fd.get('privacyAcknowledged') === 'Yes';
+      if (!name || !phone || !email || !postcode) return showError('Please enter your name, mobile, email and postcode.');
+      if (!/^\S+@\S+\.\S+$/.test(email)) return showError('Please enter a valid email address.');
+      if (!consent) return showError('Please read the privacy notice before sending your question.');
+
+      if (button) button.disabled = true;
+      if (statusBox) statusBox.textContent = 'Sending your question…';
+      const requestId = makeRequestId('enquiry');
+      const help = clean(fd.get('helpWith')) || 'General energy question';
+      const payload = assessmentPayload({
+        sourcePage: '/contact.html',
+        customerType: clean(fd.get('customerType')) || 'Other',
+        postcode,
+        helpWith: [help],
+        goals: ['Get clear energy advice'],
+        billAmount: '',
+        billingPeriod: 'Other',
+        existingSolar: clean(fd.get('existingSolar')) || 'Not sure',
+        name, phone, email,
+        notes: clean(fd.get('notes')),
+        requestId,
+        website: clean(fd.get('website'))
+      });
+
+      try {
+        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        if (statusBox) statusBox.textContent = 'Question received.';
+        form.reset();
+        if (successBox) successBox.style.display = 'block';
+        if (button) button.disabled = false;
+        try { window.gtag?.('event', 'generate_lead', { form_type: 'general_enquiry', acknowledgement: 'verified' }); } catch (_) {}
+      } catch (err) {
+        showError(err instanceof Error ? err.message : 'I could not confirm your question. Please call Mark on 0434 151 237.');
+      }
+    });
+  };
   const init = () => {
     loadBaseLayer();
     addQuickExistingSolarFields();
@@ -523,6 +586,7 @@
     hardenQuickLead();
     hardenFullCalculatorLead();
     hardenBillUpload();
+    hardenGeneralEnquiry();
   };
 
   if (document.readyState === 'loading') {
