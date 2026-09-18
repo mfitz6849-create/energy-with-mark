@@ -151,3 +151,10 @@ test('existing-solar context is collected and carried across the customer journe
   assert.match(runtime, /addFullCalculatorExistingSolarFields\(\)/);
   assert.match(runtime, /addBillExistingSolarFields\(form\)/);
 });
+
+
+test('example assessment has one clear top action group without a duplicate sticky CTA', () => {
+  assert.doesNotMatch(exampleAssessment, /assessment-example-actions/);
+  assert.equal((exampleAssessment.match(/Start My Free Assessment/g) || []).length, 1);
+  assert.match(exampleAssessment, /Print \/ Save Example/);
+});
