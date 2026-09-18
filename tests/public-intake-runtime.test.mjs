@@ -123,6 +123,8 @@ test('public property wording is clear and the example assessment is a working d
   assert.match(homePage, /What type of property is this\?/);
   assert.doesNotMatch(homePage, /What type of place is this\?/);
   assert.match(calculatorPage, /What type of property are we checking\?/);
+  assert.match(calculatorPage, /Tell us about your property/);
+  assert.doesNotMatch(calculatorPage, /Tell us about your place/);
   assert.match(billPage, /href="example-assessment\.html">See an Example Assessment/);
   assert.match(exampleAssessment, /Example assessment/);
   assert.match(exampleAssessment, /Example only · Not a quote/);
