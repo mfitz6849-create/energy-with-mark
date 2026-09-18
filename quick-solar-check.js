@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwODBPWtpOHekwSVCMoEgReUiHTOFsh4kVsRq3fCJDvocAs34gqTOBrkjW3KuLubXA/exec';
+  const LEAD_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
   const DETAIL_CALCULATOR = 'calculator.html';
   const form = document.getElementById('quickSolarCheck');
   if (!form) return;
@@ -223,7 +223,32 @@
 
     try {
       localStorage.setItem('ewmQuickSolarLead', JSON.stringify(lead));
-      await fetch(LEAD_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(lead) });
+      const requestId = `ewm-quick-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
+      const payload = {
+        kind: 'quick_check',
+        name, phone, email,
+        postcode: result.postcode,
+        customerType: result.propertyLabel,
+        helpRequested: lead.goal,
+        goals: [lead.goal],
+        billAmount: String(lead.annualBill),
+        existingSolar: result.existingSolar === 'yes' ? 'Yes' : 'No',
+        privacyNoticeVersion: '2026-08-14-v1',
+        privacyAcknowledged: true,
+        sourcePage: '/',
+        landingPage: '/',
+        pageUrl: window.location.href,
+        referrer: document.referrer || '',
+        clientRequestId: requestId,
+        context: lead
+      };
+      const response = await fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestId },
+        body: JSON.stringify(payload)
+      });
+      const saved = await response.json().catch(() => null);
+      if (!response.ok || !saved?.ok) throw new Error(saved?.message || 'The result could not be confirmed.');
       $('#quickLeadFields').classList.add('hidden');
       $('#quickSuccess').classList.remove('hidden');
       $('#detailedCalculatorLink').href = DETAIL_CALCULATOR;
