@@ -74,7 +74,7 @@ jobs:
           grep -q 'id="leadAddress"' calculator.html
           grep -q 'What type of property is this?' index.html
           grep -q 'What type of property are we checking?' calculator.html
-          grep -q 'See an Example Assessment' upload-bill.html
+          grep -q 'href="/example-assessment.html">See an Example Assessment' upload-bill.html\n          grep -q 'href="/example-assessment.html">See Example Assessment' index.html
           grep -q 'Example Energy Assessment' example-assessment.html
           grep -q 'See how your assessment is presented' example-assessment.html
           grep -q 'single-property example' example-assessment.html
@@ -148,7 +148,7 @@ jobs:
           conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
           example_url="https://energywithmark.com.au/example-assessment.html?deploy=$GITHUB_SHA"
-          contact_url="https://energywithmark.com.au/contact.html?deploy=$GITHUB_SHA"
+          contact_url="https://energywithmark.com.au/contact.html?deploy=$GITHUB_SHA"\n          upload_url="https://energywithmark.com.au/upload-bill.html?deploy=$GITHUB_SHA"\n          home_url="https://energywithmark.com.au/?deploy=$GITHUB_SHA"
           quick_url="https://energywithmark.com.au/quick-solar-check.js?deploy=$GITHUB_SHA"
           calculator_js_url="https://energywithmark.com.au/calculator-v2.js?deploy=$GITHUB_SHA"
 
@@ -157,7 +157,7 @@ jobs:
             curl -fsS -H 'Cache-Control: no-cache' "$conversion_url" -o /tmp/live-conversion.js || true
             curl -fsS -H 'Cache-Control: no-cache' "$booking_url" -o /tmp/live-book.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$example_url" -o /tmp/live-example.html || true
-            curl -fsS -H 'Cache-Control: no-cache' "$contact_url" -o /tmp/live-contact.html || true
+            curl -fsS -H 'Cache-Control: no-cache' "$contact_url" -o /tmp/live-contact.html || true\n            curl -fsS -H 'Cache-Control: no-cache' "$upload_url" -o /tmp/live-upload.html || true\n            curl -fsS -H 'Cache-Control: no-cache' "$home_url" -o /tmp/live-home.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$quick_url" -o /tmp/live-quick.js || true
             curl -fsS -H 'Cache-Control: no-cache' "$calculator_js_url" -o /tmp/live-calculator.js || true
             if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null \
