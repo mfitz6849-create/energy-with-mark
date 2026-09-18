@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const INTAKE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
+  const NATIVE_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const BILL_UPLOAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
 
@@ -65,6 +66,22 @@
     } catch (_) { return null; }
   };
 
+  const nativeIntakeSubmit = async (payload, requestId) => {
+    const response = await fetch(NATIVE_INTAKE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': requestId
+      },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok) {
+      throw new Error(result?.message || 'The request could not be confirmed. Please call Mark on 0434 151 237.');
+    }
+    return result;
+  };
+
   const verifiedIframeSubmit = ({ payload, expectedSource, timeoutMs = 25000, timeoutMessage }) => new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.name = `ewm_verified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -76,7 +93,7 @@
 
     const transport = document.createElement('form');
     transport.method = 'POST';
-    transport.action = INTAKE_ENDPOINT;
+    transport.action = BILL_UPLOAD_ENDPOINT;
     transport.target = iframe.name;
     transport.style.display = 'none';
 
@@ -125,27 +142,36 @@
     transport.submit();
   });
 
-  const assessmentPayload = ({
-    sourcePage, customerType, postcode, helpWith, goals, billAmount, billingPeriod,
+  const nativeIntakePayload = ({
+    kind, sourcePage, customerType, postcode, helpWith, goals, billAmount, billingPeriod,
     existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
-    notes, requestId, website = ''
+    notes, requestId, website = '', context = {}
   }) => ({
-    type: 'assessment',
-    source: 'Energy With Mark Website',
-    submittedAt: new Date().toISOString(),
-    fields: {
-      name, phone, email, customerType, postcode, address: '',
-      helpWith, goals, billAmount, billingPeriod, existingSolar, solarSize, systemAge,
-      inverter, highExports: '', usagePattern: '', evStatus: '', businessName: '',
-      businessType: '', startTime: '', finishTime: '', hasIntervalData: '',
-      batteryInterest: '', backupImportance: '', futureNeeds: [],
-      preferredContact: 'Phone', notes, website,
-      privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
-      privacyAcknowledged: true,
-      sourcePage, landingPage: sourcePage, pageUrl: window.location.href,
-      referrer: document.referrer || '', clientRequestId: requestId, ...queryFields()
-    },
-    files: []
+    kind,
+    name,
+    phone,
+    email,
+    customerType,
+    postcode,
+    helpRequested: Array.isArray(helpWith) ? helpWith.filter(Boolean).join(' · ') : clean(helpWith),
+    goals: Array.isArray(goals) ? goals.filter(Boolean) : [],
+    billAmount,
+    billingPeriod,
+    existingSolar,
+    solarSize,
+    systemAge,
+    inverter,
+    notes,
+    honeypot: website,
+    privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+    privacyAcknowledged: true,
+    sourcePage,
+    landingPage: sourcePage,
+    pageUrl: window.location.href,
+    referrer: document.referrer || '',
+    clientRequestId: requestId,
+    ...queryFields(),
+    context
   });
 
   const addQuickExistingSolarFields = () => {
@@ -250,7 +276,8 @@
       button.textContent = 'Confirming your result…';
       const existing = selectedValue(form, 'quickExistingSolar');
       const requestId = makeRequestId('quick');
-      const payload = assessmentPayload({
+      const payload = nativeIntakePayload({
+        kind: 'quick_check',
         sourcePage: '/',
         customerType: propertyToCustomerType(selectedValue(form, 'quickProperty')),
         postcode: value('#quickPostcode'),
@@ -269,11 +296,19 @@
           `Possible yearly saving/result: ${text('#quickSavingRange') || 'Not recorded'}`,
           `Displayed yearly bill: ${text('#quickAnnualBill') || 'Not recorded'}`
         ].join(' | '),
-        requestId
+        requestId,
+        context: {
+          resultStatus: text('#quickResultStatus'),
+          possibleSolarSize: text('#quickSolarSize'),
+          possibleYearlySaving: text('#quickSavingRange'),
+          displayedYearlyBill: text('#quickAnnualBill'),
+          property: selectedValue(form, 'quickProperty'),
+          existingSolar: existing
+        }
       });
 
       try {
-        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        await nativeIntakeSubmit(payload, requestId);
         if (existing === 'yes') saveExistingContext({
           existingSolar: 'yes',
           systemSize: value('#quickExistingSize'),
@@ -317,7 +352,8 @@
       const requestId = makeRequestId('calculator');
       const help = existing === 'yes' ? 'Existing solar' : battery === 'no' ? 'Solar' : 'Solar + battery';
 
-      const payload = assessmentPayload({
+      const payload = nativeIntakePayload({
+        kind: 'calculator',
         sourcePage: '/calculator.html',
         customerType: propertyToCustomerType(selectedValue(form, 'property')),
         postcode: value('#postcode'),
@@ -340,11 +376,22 @@
           `Solar payback result: ${text('#solarPayback') || 'Not recorded'}`,
           `Solar + battery payback result: ${text('#batteryPayback') || 'Not recorded'}`
         ].filter(Boolean).join(' | '),
-        requestId
+        requestId,
+        context: {
+          property: selectedValue(form, 'property'),
+          goal,
+          batteryInterest: battery,
+          solarResult: text('#solarSizeResult'),
+          batteryResult: text('#batterySizeResult'),
+          solarSavingResult: text('#solarSavingResult'),
+          solarBatterySavingResult: text('#batterySavingResult'),
+          solarPaybackResult: text('#solarPayback'),
+          solarBatteryPaybackResult: text('#batteryPayback')
+        }
       });
 
       try {
-        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        await nativeIntakeSubmit(payload, requestId);
         if (existing === 'yes') saveExistingContext({
           existingSolar: 'yes',
           systemSize: value('#existingSize'),
@@ -552,7 +599,8 @@
       if (statusBox) statusBox.textContent = 'Sending your question…';
       const requestId = makeRequestId('enquiry');
       const help = clean(fd.get('helpWith')) || 'General energy question';
-      const payload = assessmentPayload({
+      const payload = nativeIntakePayload({
+        kind: 'enquiry',
         sourcePage: '/contact.html',
         customerType: clean(fd.get('customerType')) || 'Other',
         postcode,
@@ -568,7 +616,7 @@
       });
 
       try {
-        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        await nativeIntakeSubmit(payload, requestId);
         if (statusBox) statusBox.textContent = 'Question received.';
         form.reset();
         if (successBox) successBox.style.display = 'block';
