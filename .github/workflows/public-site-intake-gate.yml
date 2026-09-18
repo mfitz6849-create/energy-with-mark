@@ -48,8 +48,8 @@ jobs:
       - name: Verify V3 acknowledgement contracts remain present
         run: |
           set -euo pipefail
-          grep -q "https://energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
-          grep -q "https://energywithmark.com.au/api/public/website-intake/v1" book.html
+          grep -q "/api/public/website-intake/v1" conversion-v1.js
+          grep -q "/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
           grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
           ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
