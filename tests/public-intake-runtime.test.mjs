@@ -20,7 +20,7 @@ test('core runtime always loads the verified conversion layer', () => {
 });
 
 test('native V3 transport is CORS, idempotency and acknowledgement guarded', () => {
-  assert.match(runtime, /\/api\/public\/website-intake\/v1/);
+  assert.match(runtime, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
   const body = functionBody('directV3Submit', 'assessmentToV3');
   assert.match(body, /fetch\(V3_INTAKE_ENDPOINT/);
   assert.match(body, /mode: 'cors'/);
@@ -75,7 +75,7 @@ test('bill upload confirms the file first then V3 before showing the receipt pan
 });
 
 test('booking requests go directly to V3 and remain requested until confirmed', () => {
-  assert.match(booking, /\/api\/public\/website-intake\/v1/);
+  assert.match(booking, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
   assert.match(booking, /kind:'appointment_request'/);
   assert.match(booking, /'Idempotency-Key':requestId/);
   assert.match(booking, /await submitV3\(payload,requestId\)/);
