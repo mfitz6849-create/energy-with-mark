@@ -58,6 +58,13 @@ jobs:
           grep -q "hardenFullCalculatorLead" conversion-v1.js
           grep -q "hardenBillUpload" conversion-v1.js
           grep -q "hardenGeneralEnquiry" conversion-v1.js
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" quick-solar-check.js
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" calculator-v2.js
+          grep -q "ewmV3Hardened" conversion-v1.js
+          grep -q "ewmV3Hardened" quick-solar-check.js
+          grep -q "ewmV3Hardened" calculator-v2.js
+          ! grep -q "script.google.com" quick-solar-check.js
+          ! grep -q "script.google.com" calculator-v2.js
           grep -q 'data-form-type="enquiry"' contact.html
           grep -q 'name="postcode"' book.html
           grep -q 'name="address"' book.html
@@ -142,6 +149,8 @@ jobs:
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
           example_url="https://energywithmark.com.au/example-assessment.html?deploy=$GITHUB_SHA"
           contact_url="https://energywithmark.com.au/contact.html?deploy=$GITHUB_SHA"
+          quick_url="https://energywithmark.com.au/quick-solar-check.js?deploy=$GITHUB_SHA"
+          calculator_js_url="https://energywithmark.com.au/calculator-v2.js?deploy=$GITHUB_SHA"
 
           for attempt in $(seq 1 15); do
             echo "Live-site smoke attempt $attempt/15"
@@ -149,7 +158,15 @@ jobs:
             curl -fsS -H 'Cache-Control: no-cache' "$booking_url" -o /tmp/live-book.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$example_url" -o /tmp/live-example.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$contact_url" -o /tmp/live-contact.html || true
-            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null; then
+            curl -fsS -H 'Cache-Control: no-cache' "$quick_url" -o /tmp/live-quick.js || true
+            curl -fsS -H 'Cache-Control: no-cache' "$calculator_js_url" -o /tmp/live-calculator.js || true
+            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null \
+              && grep -Fq "$endpoint" /tmp/live-quick.js 2>/dev/null \
+              && grep -Fq "$endpoint" /tmp/live-calculator.js 2>/dev/null \
+              && grep -Fq "ewmV3Hardened" /tmp/live-quick.js 2>/dev/null \
+              && grep -Fq "ewmV3Hardened" /tmp/live-calculator.js 2>/dev/null \
+              && ! grep -Fq "script.google.com" /tmp/live-quick.js 2>/dev/null \
+              && ! grep -Fq "script.google.com" /tmp/live-calculator.js 2>/dev/null; then
               echo "Live public site contains the native V3 intake contract."
               exit 0
             fi
