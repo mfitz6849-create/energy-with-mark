@@ -53,7 +53,10 @@ jobs:
           grep -q "energy-with-mark-booking-submit" book.html
           grep -q "hardenQuickLead" conversion-v1.js
           grep -q "hardenFullCalculatorLead" conversion-v1.js
-          grep -q "hardenBillUpload" conversion-v1.js\n          grep -q "hardenGeneralEnquiry" conversion-v1.js\n          grep -q \'data-form-type="enquiry"\' contact.html\n          grep -q \'name="postcode"\' book.html
+          grep -q "hardenBillUpload" conversion-v1.js
+          grep -q "hardenGeneralEnquiry" conversion-v1.js
+          grep -q 'data-form-type="enquiry"' contact.html
+          grep -q 'name="postcode"' book.html
 
       - name: Verify existing-solar assessment path remains present
         run: |
