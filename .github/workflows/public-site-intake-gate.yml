@@ -68,10 +68,15 @@ jobs:
           grep -q 'What type of property is this?' index.html
           grep -q 'What type of property are we checking?' calculator.html
           grep -q 'See an Example Assessment' upload-bill.html
-          grep -q 'Anonymous example using the real Energy With Mark assessment format' example-assessment.html
+          grep -q 'Example Energy Assessment' example-assessment.html
+          grep -q 'See how your assessment is presented' example-assessment.html
+          grep -q 'single-property example' example-assessment.html
           grep -q 'Strong solar opportunity' example-assessment.html
-          grep -q 'Solar system check first' example-assessment.html
-          grep -q 'Smaller solar opportunity' example-assessment.html
+          grep -q 'Page 1 of 3' example-assessment.html
+          grep -q 'Page 2 of 3' example-assessment.html
+          grep -q 'Page 3 of 3' example-assessment.html
+          ! grep -q 'Property B' example-assessment.html
+          ! grep -q 'Property C' example-assessment.html
           test -s example-assessment.css
 
       - name: Verify production V3 intake route without creating a lead
@@ -144,7 +149,7 @@ jobs:
             curl -fsS -H 'Cache-Control: no-cache' "$booking_url" -o /tmp/live-book.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$example_url" -o /tmp/live-example.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$contact_url" -o /tmp/live-contact.html || true
-            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Anonymous example using the real Energy With Mark assessment format' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null; then
+            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null; then
               echo "Live public site contains the native V3 intake contract."
               exit 0
             fi
