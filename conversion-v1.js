@@ -289,6 +289,7 @@
     const oldButton = document.getElementById(id);
     if (!oldButton) return null;
     const button = oldButton.cloneNode(true);
+    button.dataset.ewmV3Hardened = 'true';
     oldButton.replaceWith(button);
     return button;
   };
