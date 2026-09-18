@@ -45,15 +45,42 @@ jobs:
       - name: Run behavioral public intake regression tests
         run: node --test tests/public-intake-runtime.test.mjs
 
-      - name: Verify acknowledgement contracts remain present
+      - name: Verify V3 acknowledgement contracts remain present
         run: |
           set -euo pipefail
-          grep -q "energy-with-mark-assessment-submit" conversion-v1.js
+          grep -q "https://control.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
+          grep -q "https://control.energywithmark.com.au/api/public/website-intake/v1" book.html
+          grep -q "directV3Submit" conversion-v1.js
           grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
-          grep -q "energy-with-mark-booking-submit" book.html
+          ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
+          ! grep -q "script.google.com" book.html
           grep -q "hardenQuickLead" conversion-v1.js
           grep -q "hardenFullCalculatorLead" conversion-v1.js
           grep -q "hardenBillUpload" conversion-v1.js
+
+      - name: Verify production V3 intake route without creating a lead
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://control.energywithmark.com.au/api/public/website-intake/v1"
+          origin="https://energywithmark.com.au"
+
+          options_status="$(curl -sS -o /tmp/ewm-options-body -D /tmp/ewm-options-headers -w '%{http_code}' -X OPTIONS "$endpoint" \
+            -H "Origin: $origin" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type,idempotency-key")"
+          test "$options_status" = "204"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-options-headers
+
+          invalid_status="$(curl -sS -o /tmp/ewm-invalid-body -D /tmp/ewm-invalid-headers -w '%{http_code}' -X POST "$endpoint" \
+            -H "Origin: $origin" \
+            -H "Content-Type: application/json" \
+            -H "Idempotency-Key: ci-no-write-connectivity-check" \
+            --data '{}')"
+          test "$invalid_status" = "400"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-invalid-headers
+          grep -q '"ok":false' /tmp/ewm-invalid-body
+          grep -q 'Please provide your name, phone, valid email and consent' /tmp/ewm-invalid-body
 
       - name: Verify existing-solar assessment path remains present
         run: |
