@@ -72,8 +72,9 @@ jobs:
           echo "Intake hostname root status: $root_status"
           sed -n '1,20p' /tmp/ewm-root-headers
           cat /tmp/ewm-root-body || true
-          test "$root_status" = "404"
-          grep -q '"error":"not_found"' /tmp/ewm-root-body
+          # The hostname root may remain protected by Cloudflare Access. The public
+          # contract is the exact intake path below, not the hostname root.
+          test "$root_status" != "200"
 
           options_status="$(curl -sS -o /tmp/ewm-options-body -D /tmp/ewm-options-headers -w '%{http_code}' -X OPTIONS "$endpoint" \
             -H "Origin: $origin" \
