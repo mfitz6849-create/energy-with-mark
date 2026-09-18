@@ -2,7 +2,7 @@
   'use strict';
 
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
-  const V3_INTAKE_ENDPOINT = 'https://control.energywithmark.com.au/api/public/website-intake/v1';
+  const V3_INTAKE_ENDPOINT = '/api/public/website-intake/v1';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
 
