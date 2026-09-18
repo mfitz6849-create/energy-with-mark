@@ -60,6 +60,15 @@ jobs:
           grep -q "hardenGeneralEnquiry" conversion-v1.js
           grep -q 'data-form-type="enquiry"' contact.html
           grep -q 'name="postcode"' book.html
+          grep -q 'name="address"' book.html
+          grep -q 'name="address"' contact.html
+          grep -q 'name="address"' upload-bill.html
+          grep -q 'id="quickAddress"' index.html
+          grep -q 'id="leadAddress"' calculator.html
+          grep -q 'What type of property is this?' index.html
+          grep -q 'What type of property are we checking?' calculator.html
+          grep -q 'See an Example Assessment' upload-bill.html
+          grep -q 'Example only · Not a quote' example-assessment.html
 
       - name: Verify production V3 intake route without creating a lead
         shell: bash
@@ -122,12 +131,16 @@ jobs:
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
           conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
+          example_url="https://energywithmark.com.au/example-assessment.html?deploy=$GITHUB_SHA"
+          contact_url="https://energywithmark.com.au/contact.html?deploy=$GITHUB_SHA"
 
           for attempt in $(seq 1 15); do
             echo "Live-site smoke attempt $attempt/15"
             curl -fsS -H 'Cache-Control: no-cache' "$conversion_url" -o /tmp/live-conversion.js || true
             curl -fsS -H 'Cache-Control: no-cache' "$booking_url" -o /tmp/live-book.html || true
-            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null; then
+            curl -fsS -H 'Cache-Control: no-cache' "$example_url" -o /tmp/live-example.html || true
+            curl -fsS -H 'Cache-Control: no-cache' "$contact_url" -o /tmp/live-contact.html || true
+            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example only · Not a quote' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null; then
               echo "Live public site contains the native V3 intake contract."
               exit 0
             fi
