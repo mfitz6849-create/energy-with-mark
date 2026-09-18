@@ -107,12 +107,15 @@ test('booking requests go directly to V3 and remain requested until confirmed', 
 
 test('public intake journeys collect enough site and consent context for V3', () => {
   assert.match(contact, /data-form-type="enquiry"/);
-  assert.match(contact, /name="phone"[^>]*required/);\n  assert.match(contact, /name="address"[^>]*required/);
+  assert.match(contact, /name="phone"[^>]*required/);
+  assert.match(contact, /name="address"[^>]*required/);
   assert.match(contact, /name="postcode"[^>]*required/);
   assert.match(contact, /name="privacyAcknowledged"[^>]*required/);
-  assert.match(booking, /name="phone"[^>]*required/);\n  assert.match(booking, /name="address"[^>]*required/);
+  assert.match(booking, /name="phone"[^>]*required/);
+  assert.match(booking, /name="address"[^>]*required/);
   assert.match(booking, /name="postcode"[^>]*required/);
-  assert.match(billPage, /name="phone"[^>]*required/);\n  assert.match(billPage, /name="address"[^>]*required/);
+  assert.match(billPage, /name="phone"[^>]*required/);
+  assert.match(billPage, /name="address"[^>]*required/);
   assert.match(billPage, /name="postcode"[^>]*required/);
   assert.doesNotMatch(billPage, /Postcode[^<]*<span[^>]*>\(optional\)/i);
   assert.match(runtime + booking, /intake\.energywithmark\.com\.au/);
@@ -127,7 +130,8 @@ test('public property wording is clear and the example assessment is a working d
   assert.match(calculatorPage, /What type of property are we checking\?/);
   assert.match(calculatorPage, /Tell us about your property/);
   assert.doesNotMatch(calculatorPage, /Tell us about your place/);
-  assert.match(billPage, /href="\/example-assessment\.html">See an Example Assessment/);\n  assert.match(homePage, /href="\/example-assessment\.html">See Example Assessment/);
+  assert.match(billPage, /href="\/example-assessment\.html">See an Example Assessment/);
+  assert.match(homePage, /href="\/example-assessment\.html">See Example Assessment/);
   assert.match(exampleAssessment, /Example Energy Assessment/);
   assert.match(exampleAssessment, /See how your assessment is presented/);
   assert.match(exampleAssessment, /single-property example/);
