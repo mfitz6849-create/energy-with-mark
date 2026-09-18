@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwODBPWtpOHekwSVCMoEgReUiHTOFsh4kVsRq3fCJDvocAs34gqTOBrkjW3KuLubXA/exec';
+  const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const DETAIL_CALCULATOR = 'calculator.html';
   const form = document.getElementById('quickSolarCheck');
   if (!form) return;
@@ -11,6 +12,33 @@
   const money = (value) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(Math.round(value || 0));
   const number = (value) => new Intl.NumberFormat('en-AU', { maximumFractionDigits: 1 }).format(value || 0);
   let result = null;
+
+  function makeRequestId(prefix) {
+    let randomPart = '';
+    try {
+      if (window.crypto?.getRandomValues) {
+        randomPart = Array.from(window.crypto.getRandomValues(new Uint32Array(2))).map(value => value.toString(36)).join('');
+      }
+    } catch (_) {}
+    if (!randomPart) randomPart = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return (`ewm-${prefix}-${Date.now().toString(36)}-${randomPart}`).slice(0, 78);
+  }
+
+  function customerType(property) {
+    return { home: 'Homeowner', business: 'Business owner', community: 'Sporting or community organisation', farm: 'Other' }[property] || 'Other';
+  }
+
+  async function submitV3(payload, requestId) {
+    const response = await fetch(V3_INTAKE_ENDPOINT, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestId },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body?.ok) throw new Error(body?.message || 'The result could not be confirmed.');
+    return body;
+  }
 
   const defaults = {
     home: { label: 'Home', rate: .35, supply: 1.2, day: .42, min: 3.3, max: 30 },
@@ -190,6 +218,9 @@
   }
 
   async function sendLead() {
+    const button = $('#quickLeadButton');
+    if (button?.dataset.ewmV3Hardened === 'true') return;
+
     const name = $('#quickName').value.trim();
     const phone = $('#quickPhone').value.trim();
     const email = $('#quickEmail').value.trim();
@@ -198,14 +229,13 @@
     const error = $('#quickLeadError');
     if (!name || !phone || !email || !address) { error.textContent = 'Enter your name, mobile, email and property address.'; return; }
     if (!/^\S+@\S+\.\S+$/.test(email)) { error.textContent = 'Enter a valid email address.'; return; }
-    if (!consent) { error.textContent = 'Please confirm that I may contact you about this enquiry.'; return; }
+    if (!consent) { error.textContent = 'Please read the privacy policy and confirm that Mark may contact you.'; return; }
     error.textContent = '';
-    const button = $('#quickLeadButton');
     button.disabled = true;
-    button.textContent = 'Saving your result…';
+    button.textContent = 'Confirming your result…';
 
     const lead = {
-      submittedAt: new Date().toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' }),
+      submittedAt: new Date().toISOString(),
       name, phone, email, address,
       postcode: result.postcode,
       property: result.propertyLabel,
@@ -221,16 +251,48 @@
       appointmentRequested: 'No',
       source: 'Energy With Mark 60 Second Solar Check'
     };
+    const requestId = makeRequestId('quick');
+    const payload = {
+      kind: 'quick_check',
+      clientRequestId: requestId,
+      name,
+      phone,
+      email,
+      address,
+      postcode: result.postcode,
+      customerType: customerType(result.property),
+      helpRequested: result.existingSolar === 'yes' ? 'Existing solar' : 'Solar',
+      existingSolar: result.existingSolar === 'yes' ? 'Yes' : 'No',
+      billAmount: String(Math.round(result.annualBill)),
+      goals: [lead.goal],
+      billingPeriod: 'Annual',
+      sourcePage: '/',
+      landingPage: '/',
+      pageUrl: window.location.href,
+      referrer: document.referrer || '',
+      privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+      privacyAcknowledged: true,
+      context: {
+        journey: '60_second_check_fallback',
+        state: result.state,
+        property: result.property,
+        annualBill: lead.annualBill,
+        estimatedUsageKwh: lead.estimatedUsageKwh,
+        solarRecommendationKw: lead.solarRecommendationKw,
+        estimatedAnnualSavings: lead.estimatedAnnualSavings,
+        displayedStatus: result.status
+      }
+    };
 
     try {
-      localStorage.setItem('ewmQuickSolarLead', JSON.stringify(lead));
-      await fetch(LEAD_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(lead) });
+      localStorage.setItem('ewmQuickSolarLead', JSON.stringify({ ...lead, requestId }));
+      await submitV3(payload, requestId);
       $('#quickLeadFields').classList.add('hidden');
       $('#quickSuccess').classList.remove('hidden');
       $('#detailedCalculatorLink').href = DETAIL_CALCULATOR;
-      try { window.gtag?.('event', 'generate_lead', { form_type: '60_second_solar_check' }); } catch (_) {}
-    } catch (e) {
-      error.textContent = 'I could not save the enquiry automatically. Please call Mark on 0434 151 237.';
+      try { window.gtag?.('event', 'generate_lead', { form_type: '60_second_solar_check', acknowledgement: 'v3_fallback' }); } catch (_) {}
+    } catch (cause) {
+      error.textContent = cause instanceof Error ? cause.message : 'I could not confirm the enquiry. Please call Mark on 0434 151 237.';
       button.disabled = false;
       button.textContent = 'Save My Result';
     }
