@@ -58,7 +58,7 @@
 <aside class="calc-side">
 <div class="eyebrow">Your progress</div>
 <ol class="calc-progress" id="calcProgress">
-<li class="active"><span>1</span><div><strong>Your place</strong><small>What are we checking?</small></div></li>
+<li class="active"><span>1</span><div><strong>Your property</strong><small>Property type</small></div></li>
 <li><span>2</span><div><strong>Your power use</strong><small>Bill and postcode</small></div></li>
 <li><span>3</span><div><strong>Your needs</strong><small>Solar and battery</small></div></li>
 <li><span>4</span><div><strong>Your result</strong><small>Simple comparison</small></div></li>
@@ -70,7 +70,7 @@
 <form id="fullSolarCalculator" novalidate>
 <section class="calc-step active" data-step="1">
 <div class="step-tag">Step 1 of 4</div>
-<h2>What type of place are we checking?</h2>
+<h2>What type of property are we checking?</h2>
 <p class="step-copy">Pick the closest match.</p>
 <div class="picture-options">
 <label><input type="radio" name="property" value="home"><span class="pic-icon">⌂</span><strong>Home</strong><small>House or townhouse</small></label>
@@ -128,7 +128,7 @@
 <div class="result-head"><div><div class="step-tag">Your first estimate</div><h2 id="resultTitle">Your solar result</h2><p id="resultIntro"></p></div><button type="button" class="btn btn-secondary" data-back="3">Change Answers</button></div>
 
 <div class="result-visual" id="resultVisual">
-<div class="rv-sun">☀</div><div class="rv-arrow">→</div><div class="rv-home"><span>⌂</span><strong>Your place</strong></div><div class="rv-arrow">→</div><div class="rv-battery"><span>▣</span><strong>Battery</strong></div><div class="rv-arrow">→</div><div class="rv-grid"><span>⌁</span><strong>Grid</strong></div>
+<div class="rv-sun">☀</div><div class="rv-arrow">→</div><div class="rv-home"><span>⌂</span><strong>Your property</strong></div><div class="rv-arrow">→</div><div class="rv-battery"><span>▣</span><strong>Battery</strong></div><div class="rv-arrow">→</div><div class="rv-grid"><span>⌁</span><strong>Grid</strong></div>
 </div>
 <div class="big-result-grid">
 <div><span>Solar starting size</span><strong id="solarSizeResult">—</strong><small>First estimate only</small></div>
@@ -160,6 +160,7 @@
 <label><span>Name</span><input id="leadName" autocomplete="name"></label>
 <label><span>Mobile</span><input id="leadPhone" type="tel" autocomplete="tel"></label>
 <label class="wide"><span>Email</span><input id="leadEmail" type="email" autocomplete="email"></label>
+<label class="wide"><span>Property address</span><input id="leadAddress" autocomplete="street-address" placeholder="Street address"></label>
 </div>
 <label class="consent-line"><input id="leadConsent" type="checkbox"> <span>Mark may contact me about this result. <a href="privacy.html">Privacy policy</a>.</span></label>
 <p class="calc-error" id="leadError"></p>
