@@ -6,6 +6,7 @@ const runtime = readFileSync(new URL('../conversion-v1.js', import.meta.url), 'u
 const core = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
 const contact = readFileSync(new URL('../contact.html', import.meta.url), 'utf8');
 const booking = readFileSync(new URL('../book.html', import.meta.url), 'utf8');
+const billPage = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
 
 function functionBody(name, nextName) {
   const start = runtime.indexOf(`const ${name} =`);
@@ -74,14 +75,16 @@ test('general enquiry uses the verified assessment transport and waits for ackno
   assert.match(runtime, /hardenGeneralEnquiry\(\)/);
 });
 
-test('contact and booking collect enough site and consent context for V3', () => {
+test('public intake journeys collect enough site and consent context for V3', () => {
   assert.match(contact, /data-form-type="enquiry"/);
   assert.match(contact, /name="postcode"[^>]*required/);
   assert.match(contact, /name="privacyAcknowledged"[^>]*required/);
   assert.match(booking, /name="postcode"[^>]*required/);
   assert.match(booking, /sourcePage:'\/book\.html'/);
   assert.match(booking, /energy-with-mark-booking-submit/);
-  assert.doesNotMatch(runtime + contact + booking, /intake\.energywithmark\.com\.au/);
+  assert.match(billPage, /name="postcode"[^>]*required/);
+  assert.doesNotMatch(billPage, /Postcode[^<]*<span[^>]*>\(optional\)/i);
+  assert.doesNotMatch(runtime + contact + booking + billPage, /intake\.energywithmark\.com\.au/);
 });
 
 test('existing-solar context is collected and carried across the customer journey', () => {
