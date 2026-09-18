@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const INTAKE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
+  const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
+  const V3_INTAKE_ENDPOINT = 'https://control.energywithmark.com.au/api/public/website-intake/v1';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
 
@@ -76,7 +77,7 @@
 
     const transport = document.createElement('form');
     transport.method = 'POST';
-    transport.action = INTAKE_ENDPOINT;
+    transport.action = LEGACY_BILL_ENDPOINT;
     transport.target = iframe.name;
     transport.style.display = 'none';
 
@@ -125,12 +126,74 @@
     transport.submit();
   });
 
+  const directV3Submit = async (payload, requestId, timeoutMs = 20000) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetch(V3_INTAKE_ENDPOINT, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': requestId
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error('The request was sent, but this page could not confirm it. Please do not send it again. Call Mark on 0434 151 237 so he can check.');
+      throw new Error('The request could not be confirmed. Please try again or call Mark on 0434 151 237.');
+    } finally {
+      window.clearTimeout(timer);
+    }
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body?.ok) throw new Error(body?.message || 'The request could not be accepted.');
+    return body;
+  };
+
+  const assessmentToV3 = (kind, payload, extra = {}) => {
+    const fields = payload?.fields || {};
+    const helpWith = Array.isArray(fields.helpWith) ? fields.helpWith.filter(Boolean).join(' · ') : clean(fields.helpWith);
+    return {
+      kind,
+      clientRequestId: clean(fields.clientRequestId),
+      name: clean(fields.name),
+      phone: clean(fields.phone),
+      email: clean(fields.email),
+      postcode: clean(fields.postcode),
+      customerType: clean(fields.customerType),
+      helpRequested: helpWith,
+      existingSolar: clean(fields.existingSolar),
+      billAmount: clean(fields.billAmount),
+      notes: clean(fields.notes),
+      sourcePage: clean(fields.sourcePage),
+      landingPage: clean(fields.landingPage || fields.sourcePage),
+      privacyNoticeVersion: clean(fields.privacyNoticeVersion) || PRIVACY_NOTICE_VERSION,
+      privacyAcknowledged: fields.privacyAcknowledged === true,
+      utmSource: clean(fields.utmSource),
+      utmMedium: clean(fields.utmMedium),
+      utmCampaign: clean(fields.utmCampaign),
+      goals: Array.isArray(fields.goals) ? fields.goals.filter(Boolean) : [],
+      billingPeriod: clean(fields.billingPeriod),
+      solarSize: clean(fields.solarSize),
+      systemAge: clean(fields.systemAge),
+      inverter: clean(fields.inverter),
+      batteryInterest: clean(fields.batteryInterest),
+      pageUrl: clean(fields.pageUrl || window.location.href),
+      referrer: clean(fields.referrer || document.referrer),
+      context: payload?.context && typeof payload.context === 'object' ? payload.context : {},
+      ...extra
+    };
+  };
+
   const assessmentPayload = ({
     sourcePage, customerType, postcode, helpWith, goals, billAmount, billingPeriod,
     existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
-    notes, requestId
+    notes, requestId, context = {}
   }) => ({
     type: 'assessment',
+    context,
     source: 'Energy With Mark Website',
     submittedAt: new Date().toISOString(),
     fields: {
@@ -269,11 +332,23 @@
           `Possible yearly saving/result: ${text('#quickSavingRange') || 'Not recorded'}`,
           `Displayed yearly bill: ${text('#quickAnnualBill') || 'Not recorded'}`
         ].join(' | '),
-        requestId
+        requestId,
+        context: {
+          journey: '60_second_check',
+          property: selectedValue(form, 'quickProperty'),
+          billFrequency: value('#quickFrequency'),
+          existingSolar: existing,
+          existingSolarSize: value('#quickExistingSize'),
+          existingSystemAge: value('#quickSystemAge'),
+          resultStatus: text('#quickResultStatus'),
+          solarSizeResult: text('#quickSolarSize'),
+          savingRangeResult: text('#quickSavingRange'),
+          displayedAnnualBill: text('#quickAnnualBill')
+        }
       });
 
       try {
-        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        await directV3Submit(assessmentToV3('quick_check', payload), requestId);
         if (existing === 'yes') saveExistingContext({
           existingSolar: 'yes',
           systemSize: value('#quickExistingSize'),
@@ -340,11 +415,30 @@
           `Solar payback result: ${text('#solarPayback') || 'Not recorded'}`,
           `Solar + battery payback result: ${text('#batteryPayback') || 'Not recorded'}`
         ].filter(Boolean).join(' | '),
-        requestId
+        requestId,
+        context: {
+          journey: 'full_calculator',
+          property: selectedValue(form, 'property'),
+          state: value('#state'),
+          goal,
+          billFrequency: value('#billFrequency'),
+          existingSolar: existing,
+          existingSolarSize: value('#existingSize'),
+          existingSystemAge: value('#existingSystemAge'),
+          existingInverter: value('#existingInverter'),
+          existingBattery: value('#existingBattery'),
+          batteryChoice: battery,
+          solarSizeResult: text('#solarSizeResult'),
+          batterySizeResult: text('#batterySizeResult'),
+          solarSavingResult: text('#solarSavingResult'),
+          batterySavingResult: text('#batterySavingResult'),
+          solarPaybackResult: text('#solarPayback'),
+          batteryPaybackResult: text('#batteryPayback')
+        }
       });
 
       try {
-        await verifiedIframeSubmit({ payload, expectedSource: 'energy-with-mark-assessment-submit' });
+        await directV3Submit(assessmentToV3('calculator', payload), requestId);
         if (existing === 'yes') saveExistingContext({
           existingSolar: 'yes',
           systemSize: value('#existingSize'),
@@ -478,16 +572,48 @@
             pageUrl: window.location.href, referrer: document.referrer || '',
             clientRequestId: requestId, ...queryFields()
           },
+          context: {
+            journey: 'bill_upload',
+            billFile: { name: file.name, mimeType: file.type, sizeBytes: file.size },
+            existingSolar,
+            solarSize: clean(fd.get('solarSize')),
+            systemAge: clean(fd.get('systemAge')),
+            inverter: clean(fd.get('inverter')),
+            existingBattery: clean(fd.get('existingBattery'))
+          },
           files: [{ name: file.name, mimeType: file.type, category: 'Electricity Bill', dataBase64 }]
         };
 
         if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
-        await verifiedIframeSubmit({
+        const uploadReceipt = await verifiedIframeSubmit({
           payload,
           expectedSource: 'energy-with-mark-bill-upload-submit',
           timeoutMs: 45000,
           timeoutMessage: 'Your bill was sent, but this page could not confirm receipt. Please do not send it again. Call Mark on 0434 151 237 so he can check.'
         });
+        const receipt = uploadReceipt && typeof uploadReceipt === 'object' ? uploadReceipt : {};
+        const fileFolderId = clean(receipt.fileFolderId || receipt.folderId);
+        const reportedFileCount = Number(receipt.fileCount || 0);
+        const legacyFileCount = Number.isFinite(reportedFileCount) && reportedFileCount > 0 ? Math.floor(reportedFileCount) : (fileFolderId ? 1 : 0);
+        if (statusBox) statusBox.textContent = 'Linking your assessment to the Energy With Mark system…';
+        try {
+          await directV3Submit(assessmentToV3('bill_upload', payload, {
+          legacyUploadConfirmed: true,
+          legacyFileFolderId: fileFolderId,
+          legacyFileCount,
+          legacySubmissionId: clean(receipt.submissionId || receipt.id),
+          legacyUploadReceipt: {
+            ok: receipt.ok === true,
+            requestId: clean(receipt.requestId),
+            submissionId: clean(receipt.submissionId || receipt.id),
+            fileFolderId,
+            fileCount: legacyFileCount,
+            transport: 'secure_apps_script_bill_upload'
+          }
+        }), requestId);
+        } catch (linkError) {
+          throw new Error(`System link could not be confirmed after the bill receipt: ${linkError instanceof Error ? linkError.message : 'unknown error'}`);
+        }
 
         if (existingSolar === 'Yes') saveExistingContext({
           existingSolar: 'yes',
@@ -511,7 +637,17 @@
         }
         try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: 'verified', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
       } catch (err) {
-        showError(err instanceof Error ? err.message : 'I could not confirm that bill. Please call Mark on 0434 151 237.');
+        const message = err instanceof Error ? err.message : 'I could not confirm that bill. Please call Mark on 0434 151 237.';
+        if (/linking your assessment|system link|could not be confirmed/i.test(message)) {
+          if (statusBox) statusBox.textContent = '';
+          if (errorBox) {
+            errorBox.textContent = 'Your bill was received, but I could not confirm the system link. Please do not send the bill again. Call Mark on 0434 151 237 so he can check it.';
+            errorBox.style.display = 'block';
+          }
+          if (button) button.disabled = true;
+        } else {
+          showError(message);
+        }
       }
     });
   };
