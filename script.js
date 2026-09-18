@@ -280,6 +280,19 @@ document.querySelectorAll('.footer-small').forEach(footer => {
   addFooterLink('who-i-work-with.html', 'Who I Work With');
 });
 
+// Keep every public "Example Assessment" control working even if older markup used a
+// placeholder link or a plain button.
+document.querySelectorAll('a,button').forEach(control => {
+  const label = (control.textContent || '').trim();
+  if (!/example assessment/i.test(label)) return;
+  const target = siteUrl('example-assessment.html');
+  if (control.tagName === 'A') {
+    control.setAttribute('href', target);
+  } else {
+    control.addEventListener('click', () => window.location.assign(target));
+  }
+});
+
 function sendAnalyticsEvent(name, params = {}) {
   if (typeof window.gtag !== 'function') return;
   window.gtag('event', name, { page_path: window.location.pathname, ...params });
