@@ -4,6 +4,7 @@
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
+  const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
 
   // Keep the existing conversion/profile layer unchanged.
@@ -20,6 +21,7 @@
   const value = selector => clean(document.querySelector(selector)?.value);
   const text = selector => clean(document.querySelector(selector)?.textContent);
   const selectedValue = (root, name) => root?.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  const marketingOptIn = root => Boolean(root?.querySelector('input[name="marketingConsent"]')?.checked);
   const queryFields = () => {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -172,6 +174,8 @@
       landingPage: clean(fields.landingPage || fields.sourcePage),
       privacyNoticeVersion: clean(fields.privacyNoticeVersion) || PRIVACY_NOTICE_VERSION,
       privacyAcknowledged: fields.privacyAcknowledged === true,
+      marketingConsentAccepted: fields.marketingConsentAccepted === true,
+      marketingConsentVersion: fields.marketingConsentAccepted === true ? MARKETING_CONSENT_VERSION : '',
       honeypot: clean(fields.website),
       utmSource: clean(fields.utmSource),
       utmMedium: clean(fields.utmMedium),
@@ -192,7 +196,7 @@
   const assessmentPayload = ({
     sourcePage, customerType, postcode, address = '', helpWith, goals, billAmount, billingPeriod,
     existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
-    notes, requestId, website = '', context = {}
+    notes, requestId, website = '', context = {}, marketingConsentAccepted = false
   }) => ({
     type: 'assessment',
     context,
@@ -207,6 +211,8 @@
       preferredContact: 'Phone', notes, website,
       privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
       privacyAcknowledged: true,
+      marketingConsentAccepted,
+      marketingConsentVersion: marketingConsentAccepted ? MARKETING_CONSENT_VERSION : '',
       sourcePage, landingPage: sourcePage, pageUrl: window.location.href,
       referrer: document.referrer || '', clientRequestId: requestId, ...queryFields()
     },
@@ -337,6 +343,7 @@
           `Displayed yearly bill: ${text('#quickAnnualBill') || 'Not recorded'}`
         ].join(' | '),
         requestId,
+        marketingConsentAccepted: marketingOptIn(form),
         context: {
           journey: '60_second_check',
           property: selectedValue(form, 'quickProperty'),
@@ -421,6 +428,7 @@
           `Solar + battery payback result: ${text('#batteryPayback') || 'Not recorded'}`
         ].filter(Boolean).join(' | '),
         requestId,
+        marketingConsentAccepted: marketingOptIn(form),
         context: {
           journey: 'full_calculator',
           property: selectedValue(form, 'property'),
@@ -573,6 +581,8 @@
             website: clean(fd.get('website')),
             privacyNoticeVersion: clean(fd.get('privacyNoticeVersion')) || PRIVACY_NOTICE_VERSION,
             privacyAcknowledged: fd.get('privacyAcknowledged') === 'Yes',
+            marketingConsentAccepted: fd.get('marketingConsent') === 'Yes',
+            marketingConsentVersion: fd.get('marketingConsent') === 'Yes' ? MARKETING_CONSENT_VERSION : '',
             sourcePage: '/upload-bill.html', landingPage: '/upload-bill.html',
             pageUrl: window.location.href, referrer: document.referrer || '',
             clientRequestId: requestId, ...queryFields()
@@ -708,6 +718,7 @@
         notes: clean(fd.get('notes')),
         requestId,
         website: clean(fd.get('website')),
+        marketingConsentAccepted: fd.get('marketingConsent') === 'Yes',
         context: {
           journey: 'general_enquiry',
           questionType: help,
