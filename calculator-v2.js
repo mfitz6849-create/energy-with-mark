@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwODBPWtpOHekwSVCMoEgReUiHTOFsh4kVsRq3fCJDvocAs34gqTOBrkjW3KuLubXA/exec';
+  const LEAD_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
   const form = document.getElementById('fullSolarCalculator');
   if (!form) return;
 
@@ -227,7 +227,32 @@
     };
 
     try {
-      await fetch(LEAD_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(lead) });
+      const requestId = `ewm-calculator-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
+      const payload = {
+        kind: 'calculator',
+        name, phone, email,
+        postcode: lead.postcode,
+        customerType: lead.property,
+        helpRequested: lead.systemPlan,
+        goals: [lead.goal].filter(Boolean),
+        billAmount: String(lead.annualBill),
+        existingSolar: selected('existingSolar') === 'yes' ? 'Yes' : selected('existingSolar') === 'no' ? 'No' : 'Not sure',
+        privacyNoticeVersion: '2026-08-14-v1',
+        privacyAcknowledged: true,
+        sourcePage: '/calculator.html',
+        landingPage: '/calculator.html',
+        pageUrl: window.location.href,
+        referrer: document.referrer || '',
+        clientRequestId: requestId,
+        context: lead
+      };
+      const response = await fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestId },
+        body: JSON.stringify(payload)
+      });
+      const saved = await response.json().catch(() => null);
+      if (!response.ok || !saved?.ok) throw new Error(saved?.message || 'The result could not be confirmed.');
       $('#leadFields').classList.add('hidden');
       $('#savedPanel').classList.remove('hidden');
       try { window.gtag?.('event', 'generate_lead', { form_type: 'full_solar_calculator' }); } catch (_) {}
