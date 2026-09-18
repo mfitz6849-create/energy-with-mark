@@ -48,8 +48,8 @@ jobs:
       - name: Verify V3 acknowledgement contracts remain present
         run: |
           set -euo pipefail
-          grep -q "/api/public/website-intake/v1" conversion-v1.js
-          grep -q "/api/public/website-intake/v1" book.html
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
           grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
           ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
@@ -62,8 +62,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          endpoint="https://energywithmark.com.au/api/public/website-intake/v1"
+          endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
           origin="https://energywithmark.com.au"
+
+          root_status="$(curl -sS -o /tmp/ewm-root-body -D /tmp/ewm-root-headers -w '%{http_code}' "https://intake.energywithmark.com.au/")"
+          echo "Intake hostname root status: $root_status"
+          sed -n '1,20p' /tmp/ewm-root-headers
+          cat /tmp/ewm-root-body || true
+          test "$root_status" = "404"
+          grep -q '"error":"not_found"' /tmp/ewm-root-body
 
           options_status="$(curl -sS -o /tmp/ewm-options-body -D /tmp/ewm-options-headers -w '%{http_code}' -X OPTIONS "$endpoint" \
             -H "Origin: $origin" \
