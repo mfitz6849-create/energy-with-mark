@@ -7,6 +7,9 @@ const core = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
 const contact = readFileSync(new URL('../contact.html', import.meta.url), 'utf8');
 const booking = readFileSync(new URL('../book.html', import.meta.url), 'utf8');
 const billPage = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
+const homePage = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const calculatorPage = readFileSync(new URL('../calculator.html', import.meta.url), 'utf8');
+const exampleAssessment = readFileSync(new URL('../example-assessment.html', import.meta.url), 'utf8');
 
 function functionBody(name, nextName) {
   const start = runtime.indexOf(`const ${name} =`);
@@ -95,18 +98,41 @@ test('booking requests go directly to V3 and remain requested until confirmed', 
   assert.match(booking, /await submitV3\(payload,requestId\)/);
   assert.match(booking, /preferredDate:get\('preferredDate'\)/);
   assert.match(booking, /preferredTime:get\('preferredTime'\)/);
+  assert.match(booking, /address:get\('address'\)/);
   assert.match(booking, /postcode:get\('postcode'\)/);
   assert.doesNotMatch(booking, /script\.google\.com/);
 });
 
 test('public intake journeys collect enough site and consent context for V3', () => {
   assert.match(contact, /data-form-type="enquiry"/);
+  assert.match(contact, /name="address"[^>]*required/);
   assert.match(contact, /name="postcode"[^>]*required/);
   assert.match(contact, /name="privacyAcknowledged"[^>]*required/);
+  assert.match(booking, /name="address"[^>]*required/);
   assert.match(booking, /name="postcode"[^>]*required/);
+  assert.match(billPage, /name="address"[^>]*required/);
   assert.match(billPage, /name="postcode"[^>]*required/);
   assert.doesNotMatch(billPage, /Postcode[^<]*<span[^>]*>\(optional\)/i);
   assert.match(runtime + booking, /intake\.energywithmark\.com\.au/);
+  assert.match(runtime, /address: clean\(fields\.address\)/);
+  assert.match(runtime, /quickAddress/);
+  assert.match(runtime, /leadAddress/);
+});
+
+test('public property wording is clear and the example assessment is a working destination', () => {
+  assert.match(homePage, /What type of property is this\?/);
+  assert.doesNotMatch(homePage, /What type of place is this\?/);
+  assert.match(calculatorPage, /What type of property are we checking\?/);
+  assert.match(billPage, /href="example-assessment\.html">See an Example Assessment/);
+  assert.match(exampleAssessment, /Example assessment/);
+  assert.match(exampleAssessment, /Example only · Not a quote/);
+  assert.match(core, /example-assessment\.html/);
+});
+
+test('Ask Mark next steps use customer-facing language', () => {
+  assert.match(contact, /2\. I look at what matters/);
+  assert.match(contact, /give you a useful, practical answer/);
+  assert.doesNotMatch(contact, /connected to the same Energy With Mark customer journey/);
 });
 
 test('existing-solar context is collected and carried across the customer journey', () => {

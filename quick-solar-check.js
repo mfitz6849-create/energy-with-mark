@@ -193,9 +193,10 @@
     const name = $('#quickName').value.trim();
     const phone = $('#quickPhone').value.trim();
     const email = $('#quickEmail').value.trim();
+    const address = $('#quickAddress').value.trim();
     const consent = $('#quickConsent').checked;
     const error = $('#quickLeadError');
-    if (!name || !phone || !email) { error.textContent = 'Enter your name, mobile and email.'; return; }
+    if (!name || !phone || !email || !address) { error.textContent = 'Enter your name, mobile, email and property address.'; return; }
     if (!/^\S+@\S+\.\S+$/.test(email)) { error.textContent = 'Enter a valid email address.'; return; }
     if (!consent) { error.textContent = 'Please confirm that I may contact you about this enquiry.'; return; }
     error.textContent = '';
@@ -205,7 +206,7 @@
 
     const lead = {
       submittedAt: new Date().toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' }),
-      name, phone, email,
+      name, phone, email, address,
       postcode: result.postcode,
       property: result.propertyLabel,
       goal: result.existingSolar === 'yes' ? 'Review existing solar' : 'Find out if solar can help',

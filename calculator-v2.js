@@ -199,9 +199,10 @@
     const name = $('#leadName').value.trim();
     const phone = $('#leadPhone').value.trim();
     const email = $('#leadEmail').value.trim();
+    const address = $('#leadAddress').value.trim();
     const consent = $('#leadConsent').checked;
     const error = $('#leadError');
-    if (!name || !phone || !email) { error.textContent = 'Enter your name, mobile and email.'; return; }
+    if (!name || !phone || !email || !address) { error.textContent = 'Enter your name, mobile, email and property address.'; return; }
     if (!/^\S+@\S+\.\S+$/.test(email)) { error.textContent = 'Enter a valid email address.'; return; }
     if (!consent) { error.textContent = 'Please confirm that Mark may contact you.'; return; }
     error.textContent = '';
@@ -211,7 +212,7 @@
 
     const lead = {
       submittedAt: new Date().toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' }),
-      name, phone, email,
+      name, phone, email, address,
       postcode: $('#postcode').value.trim(),
       property: defaults[result.property].label,
       goal: selected('goal'),
