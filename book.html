@@ -11,6 +11,7 @@
 <script>
 (() => {
   const ENDPOINT='https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const MARKETING_CONSENT_VERSION='2026-09-19-v1';
   const form=document.querySelector('form[data-form-type="booking"]'); if(!form)return;
   const button=form.querySelector('[type="submit"]'), errorBox=form.querySelector('.form-error'), status=form.querySelector('.submit-status'), success=form.querySelector('.success');
   const dateInput=form.elements.preferredDate;
@@ -56,6 +57,8 @@
       honeypot:get('website'),
       privacyNoticeVersion:get('privacyNoticeVersion'),
       privacyAcknowledged:Boolean(form.elements.privacyAcknowledged?.checked),
+      marketingConsentAccepted:Boolean(form.elements.marketingConsent?.checked),
+      marketingConsentVersion:form.elements.marketingConsent?.checked?MARKETING_CONSENT_VERSION:'',
       sourcePage:'/book.html',
       landingPage:'/book.html',
       pageUrl:window.location.href,
