@@ -161,6 +161,7 @@
       name: clean(fields.name),
       phone: clean(fields.phone),
       email: clean(fields.email),
+      address: clean(fields.address),
       postcode: clean(fields.postcode),
       customerType: clean(fields.customerType),
       helpRequested: helpWith,
@@ -189,7 +190,7 @@
   };
 
   const assessmentPayload = ({
-    sourcePage, customerType, postcode, helpWith, goals, billAmount, billingPeriod,
+    sourcePage, customerType, postcode, address = '', helpWith, goals, billAmount, billingPeriod,
     existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
     notes, requestId, website = '', context = {}
   }) => ({
@@ -198,7 +199,7 @@
     source: 'Energy With Mark Website',
     submittedAt: new Date().toISOString(),
     fields: {
-      name, phone, email, customerType, postcode, address: '',
+      name, phone, email, customerType, postcode, address,
       helpWith, goals, billAmount, billingPeriod, existingSolar, solarSize, systemAge,
       inverter, highExports: '', usagePattern: '', evStatus: '', businessName: '',
       businessType: '', startTime: '', finishTime: '', hasIntervalData: '',
@@ -302,9 +303,9 @@
 
     button.addEventListener('click', async () => {
       const error = document.getElementById('quickLeadError');
-      const name = value('#quickName'), phone = value('#quickPhone'), email = value('#quickEmail');
+      const name = value('#quickName'), phone = value('#quickPhone'), email = value('#quickEmail'), address = value('#quickAddress');
       const consent = Boolean(document.getElementById('quickConsent')?.checked);
-      if (!name || !phone || !email) { if (error) error.textContent = 'Enter your name, mobile and email.'; return; }
+      if (!name || !phone || !email || !address) { if (error) error.textContent = 'Enter your name, mobile, email and property address.'; return; }
       if (!/^\S+@\S+\.\S+$/.test(email)) { if (error) error.textContent = 'Enter a valid email address.'; return; }
       if (!consent) { if (error) error.textContent = 'Please read the privacy policy and confirm that Mark may contact you.'; return; }
       if (error) error.textContent = '';
@@ -318,6 +319,7 @@
         sourcePage: '/',
         customerType: propertyToCustomerType(selectedValue(form, 'quickProperty')),
         postcode: value('#quickPostcode'),
+        address,
         helpWith: [existing === 'yes' ? 'Existing solar' : 'Solar'],
         goals: [existing === 'yes' ? 'Review existing solar and next options' : 'Find out if solar can help'],
         billAmount: value('#quickBill'),
@@ -355,7 +357,7 @@
           systemSize: value('#quickExistingSize'),
           systemAge: value('#quickSystemAge')
         });
-        try { localStorage.setItem('ewmQuickSolarLead', JSON.stringify({ requestId, name, phone, email, postcode: value('#quickPostcode'), source: 'Energy With Mark 60 Second Solar Check' })); } catch (_) {}
+        try { localStorage.setItem('ewmQuickSolarLead', JSON.stringify({ requestId, name, phone, email, address, postcode: value('#quickPostcode'), source: 'Energy With Mark 60 Second Solar Check' })); } catch (_) {}
         document.getElementById('quickLeadFields')?.classList.add('hidden');
         document.getElementById('quickSuccess')?.classList.remove('hidden');
         try { window.gtag?.('event', 'generate_lead', { form_type: '60_second_solar_check', acknowledgement: 'v3' }); } catch (_) {}
@@ -377,9 +379,9 @@
 
     button.addEventListener('click', async () => {
       const error = document.getElementById('leadError');
-      const name = value('#leadName'), phone = value('#leadPhone'), email = value('#leadEmail');
+      const name = value('#leadName'), phone = value('#leadPhone'), email = value('#leadEmail'), address = value('#leadAddress');
       const consent = Boolean(document.getElementById('leadConsent')?.checked);
-      if (!name || !phone || !email) { if (error) error.textContent = 'Enter your name, mobile and email.'; return; }
+      if (!name || !phone || !email || !address) { if (error) error.textContent = 'Enter your name, mobile, email and property address.'; return; }
       if (!/^\S+@\S+\.\S+$/.test(email)) { if (error) error.textContent = 'Enter a valid email address.'; return; }
       if (!consent) { if (error) error.textContent = 'Please read the privacy policy and confirm that Mark may contact you.'; return; }
       if (error) error.textContent = '';
@@ -397,6 +399,7 @@
         sourcePage: '/calculator.html',
         customerType: propertyToCustomerType(selectedValue(form, 'property')),
         postcode: value('#postcode'),
+        address,
         helpWith: [help],
         goals: [goal || 'Understand whether solar or battery makes financial sense'],
         billAmount: value('#billAmount'),
@@ -557,7 +560,7 @@
           type: 'bill_upload',
           fields: {
             name: clean(fd.get('name')), phone: clean(fd.get('phone')), email: clean(fd.get('email')),
-            postcode: clean(fd.get('postcode')), customerType: clean(fd.get('customerType')),
+            address: clean(fd.get('address')), postcode: clean(fd.get('postcode')), customerType: clean(fd.get('customerType')),
             helpWith: clean(fd.get('helpWith')), existingSolar, billAmount: clean(fd.get('billAmount')),
             notes: [
               clean(fd.get('notes')),
@@ -679,9 +682,10 @@
       const name = clean(fd.get('name'));
       const phone = clean(fd.get('phone'));
       const email = clean(fd.get('email'));
+      const address = clean(fd.get('address'));
       const postcode = clean(fd.get('postcode'));
       const consent = fd.get('privacyAcknowledged') === 'Yes';
-      if (!name || !phone || !email || !postcode) return showError('Please enter your name, mobile, email and postcode.');
+      if (!name || !phone || !email || !address || !postcode) return showError('Please enter your name, mobile, email, property address and postcode.');
       if (!/^\S+@\S+\.\S+$/.test(email)) return showError('Please enter a valid email address.');
       if (!consent) return showError('Please read the privacy notice before sending your question.');
 
@@ -693,6 +697,7 @@
         sourcePage: '/contact.html',
         customerType: clean(fd.get('customerType')) || 'Other',
         postcode,
+        address,
         helpWith: [help],
         goals: ['Get clear energy advice'],
         billAmount: '',
