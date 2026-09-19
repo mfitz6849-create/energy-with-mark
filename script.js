@@ -99,6 +99,9 @@ if (navLinks) {
     if (path.endsWith('/calculator.html')) {
       link.href = siteUrl('calculator.html');
       link.textContent = 'Full Calculator';
+    } else if (path.endsWith('/home.html')) {
+      link.href = siteUrl('home.html');
+      link.textContent = 'Homeowners';
     }
   });
 
