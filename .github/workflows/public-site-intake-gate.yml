@@ -87,11 +87,25 @@ jobs:
           ! grep -q 'Property C' example-assessment.html
           test -s example-assessment.css
 
+      - name: Verify V4 branded contact and marketing-consent contracts
+        run: |
+          set -euo pipefail
+          for file in index.html contact.html book.html upload-bill.html calculator.html; do
+            grep -Fq 'mark@energywithmark.com.au' "$file"
+            ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' "$file"
+          done
+          grep -Fq 'name="marketingConsent"' index.html
+          grep -Fq 'name="marketingConsent"' calculator.html
+          grep -Fq 'name="marketingConsent"' contact.html
+          grep -Fq 'name="marketingConsent"' book.html
+          grep -Fq 'name="marketingConsent"' upload-bill.html
+
       - name: Verify production V3 intake route without creating a lead
         shell: bash
         run: |
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
+          v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           origin="https://energywithmark.com.au"
 
           root_status="$(curl -sS -o /tmp/ewm-root-body -D /tmp/ewm-root-headers -w '%{http_code}' "https://intake.energywithmark.com.au/")"
@@ -155,6 +169,15 @@ jobs:
           quick_url="https://energywithmark.com.au/quick-solar-check.js?deploy=$GITHUB_SHA"
           calculator_js_url="https://energywithmark.com.au/calculator-v2.js?deploy=$GITHUB_SHA"
 
+          readiness_status="$(curl -sS -o /tmp/ewm-v4-readiness -D /tmp/ewm-v4-readiness-headers -w '%{http_code}' -H 'Cache-Control: no-cache' "$v4_readiness_url")"
+          echo "V4 readiness status: $readiness_status"
+          cat /tmp/ewm-v4-readiness || true
+          test "$readiness_status" = "200" -o "$readiness_status" = "202"
+          grep -Fq '"version":"v4"' /tmp/ewm-v4-readiness
+          grep -Fq '"schemaReady":true' /tmp/ewm-v4-readiness
+          grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-readiness
+          grep -Fq '"attestationReady":true' /tmp/ewm-v4-readiness
+
           for attempt in $(seq 1 15); do
             echo "Live-site smoke attempt $attempt/15"
             curl -fsS -H 'Cache-Control: no-cache' "$conversion_url" -o /tmp/live-conversion.js || true
@@ -170,6 +193,12 @@ jobs:
               && grep -Fq 'name="address"' /tmp/live-contact.html 2>/dev/null \
               && grep -Fq 'href="/example-assessment.html">See an Example Assessment' /tmp/live-upload.html 2>/dev/null \
               && grep -Fq 'href="/example-assessment.html">See Example Assessment' /tmp/live-home.html 2>/dev/null \
+              && grep -Fq 'mark@energywithmark.com.au' /tmp/live-home.html 2>/dev/null \
+              && grep -Fq 'mark@energywithmark.com.au' /tmp/live-contact.html 2>/dev/null \
+              && grep -Fq 'mark@energywithmark.com.au' /tmp/live-book.html 2>/dev/null \
+              && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-home.html 2>/dev/null \
+              && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-contact.html 2>/dev/null \
+              && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-book.html 2>/dev/null \
               && grep -Fq "$endpoint" /tmp/live-quick.js 2>/dev/null \
               && grep -Fq "$endpoint" /tmp/live-calculator.js 2>/dev/null \
               && grep -Fq "ewmV3Hardened" /tmp/live-quick.js 2>/dev/null \
