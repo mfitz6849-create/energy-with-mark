@@ -102,7 +102,7 @@ jobs:
           grep -Fq 'name="marketingConsent"' book.html
           grep -Fq 'name="marketingConsent"' upload-bill.html
 
-      - name: Verify production V3 intake route without creating a lead
+      - name: Verify production intake and V4 backend readiness without creating a lead
         shell: bash
         run: |
           set -euo pipefail
@@ -140,6 +140,15 @@ jobs:
           grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-invalid-headers
           grep -q '"ok":false' /tmp/ewm-invalid-body
           grep -q 'Please provide your name, phone, valid email and consent' /tmp/ewm-invalid-body
+
+          readiness_status="$(curl -sS --max-time 15 -o /tmp/ewm-v4-premerge-readiness -w '%{http_code}' "$v4_readiness_url" || true)"
+          echo "V4 production readiness status: $readiness_status"
+          cat /tmp/ewm-v4-premerge-readiness || true
+          test "$readiness_status" = "200" -o "$readiness_status" = "202"
+          grep -Fq '"version":"v4"' /tmp/ewm-v4-premerge-readiness
+          grep -Fq '"schemaReady":true' /tmp/ewm-v4-premerge-readiness
+          grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-premerge-readiness
+          grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
       - name: Verify existing-solar assessment path remains present
         run: |
