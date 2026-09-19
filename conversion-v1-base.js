@@ -48,7 +48,7 @@
       jobTitle:'Renewable Energy Specialist',
       url:'https://energywithmark.com.au/',
       image:profileImage,
-      email:'mark.fitzpatrick@classaenergy.com.au',
+      email:'mark@energywithmark.com.au',
       telephone:'+61434151237',
       sameAs:socialProfiles.map(([, , url]) => url),
       worksFor:{'@type':'Organization',name:'Energy With Mark',url:'https://energywithmark.com.au/'}
