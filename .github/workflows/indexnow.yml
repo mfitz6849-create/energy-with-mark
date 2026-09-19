@@ -3,6 +3,15 @@ name: IndexNow URL updates
 on:
   push:
     branches: [main]
+    paths:
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "articles/**"
+      - "sitemap.xml"
+      - "robots.txt"
+      - "11d89822f5f9c1126a8ae62d883c1210.txt"
+      - ".github/workflows/indexnow.yml"
   workflow_dispatch:
 
 permissions:
