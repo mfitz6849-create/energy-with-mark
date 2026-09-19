@@ -138,7 +138,8 @@ test("public customer forms and calculators keep the canonical native intake", a
   const calculator = await readFile(path.join(root, "calculator.html"), "utf8");
 
   for (const [name, source] of [["bill", bill], ["booking", book], ["contact", contact]]) {
-    assert.match(source, /name=["'](?:phone|address)["']|id=["'][^"']*(?:Phone|Address)["']/i, `${name} must collect contact/property context`);
+    assert.match(source, /name=["']phone["']|id=["'][^"']*Phone["']/i, `${name} must collect phone`);
+    assert.match(source, /name=["']address["']|id=["'][^"']*Address["']/i, `${name} must collect property address`);
   }
   assert.match(home, /What type of property is this\?/);
   assert.match(calculator, /What type of property are we checking\?/);
