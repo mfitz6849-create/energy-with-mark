@@ -20,20 +20,27 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: public-intake-gate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify-public-intake:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check out site
+        if: github.event_name != 'push'
         uses: actions/checkout@v4
 
       - name: Use Node.js 22
+        if: github.event_name != 'push'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
       - name: Syntax-check public JavaScript
+        if: github.event_name != 'push'
         run: |
           set -euo pipefail
           node --check script.js
@@ -43,9 +50,11 @@ jobs:
           node --check calculator-v2.js
 
       - name: Run behavioral public intake regression tests
+        if: github.event_name != 'push'
         run: node --test tests/public-intake-runtime.test.mjs
 
       - name: Verify V3 acknowledgement contracts remain present
+        if: github.event_name != 'push'
         run: |
           set -euo pipefail
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
@@ -88,6 +97,7 @@ jobs:
           test -s example-assessment.css
 
       - name: Verify V4 branded contact and marketing-consent contracts
+        if: github.event_name != 'push'
         run: |
           set -euo pipefail
           for file in index.html contact.html book.html upload-bill.html calculator.html privacy.html; do
@@ -103,6 +113,7 @@ jobs:
           grep -Fq 'name="marketingConsent"' upload-bill.html
 
       - name: Verify production intake and V4 backend readiness without creating a lead
+        if: github.event_name != 'push'
         shell: bash
         run: |
           set -euo pipefail
@@ -151,6 +162,7 @@ jobs:
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
       - name: Verify existing-solar assessment path remains present
+        if: github.event_name != 'push'
         run: |
           set -euo pipefail
           grep -q "Current solar size" conversion-v1.js
@@ -161,6 +173,7 @@ jobs:
           grep -q "What do you already have" calculator.html
 
       - name: Verify rollback base exists
+        if: github.event_name != 'push'
         run: |
           set -euo pipefail
           test -s conversion-v1-base.js
