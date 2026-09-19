@@ -90,10 +90,12 @@ jobs:
       - name: Verify V4 branded contact and marketing-consent contracts
         run: |
           set -euo pipefail
-          for file in index.html contact.html book.html upload-bill.html calculator.html; do
+          for file in index.html contact.html book.html upload-bill.html calculator.html privacy.html; do
             grep -Fq 'mark@energywithmark.com.au' "$file"
             ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' "$file"
           done
+          grep -Fq 'id="marketing-emails"' privacy.html
+          grep -Fq 'Marketing email consent is separate from the privacy acknowledgement' privacy.html
           grep -Fq 'name="marketingConsent"' index.html
           grep -Fq 'name="marketingConsent"' calculator.html
           grep -Fq 'name="marketingConsent"' contact.html
@@ -160,12 +162,15 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
+          v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
           example_url="https://energywithmark.com.au/example-assessment.html?deploy=$GITHUB_SHA"
           contact_url="https://energywithmark.com.au/contact.html?deploy=$GITHUB_SHA"
           upload_url="https://energywithmark.com.au/upload-bill.html?deploy=$GITHUB_SHA"
           home_url="https://energywithmark.com.au/?deploy=$GITHUB_SHA"
+          calculator_url="https://energywithmark.com.au/calculator.html?deploy=$GITHUB_SHA"
+          privacy_url="https://energywithmark.com.au/privacy.html?deploy=$GITHUB_SHA"
           quick_url="https://energywithmark.com.au/quick-solar-check.js?deploy=$GITHUB_SHA"
           calculator_js_url="https://energywithmark.com.au/calculator-v2.js?deploy=$GITHUB_SHA"
 
@@ -186,6 +191,8 @@ jobs:
             curl -fsS -H 'Cache-Control: no-cache' "$contact_url" -o /tmp/live-contact.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$upload_url" -o /tmp/live-upload.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$home_url" -o /tmp/live-home.html || true
+            curl -fsS -H 'Cache-Control: no-cache' "$calculator_url" -o /tmp/live-calculator.html || true
+            curl -fsS -H 'Cache-Control: no-cache' "$privacy_url" -o /tmp/live-privacy.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$quick_url" -o /tmp/live-quick.js || true
             curl -fsS -H 'Cache-Control: no-cache' "$calculator_js_url" -o /tmp/live-calculator.js || true
             if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null \
@@ -196,20 +203,32 @@ jobs:
               && grep -Fq 'mark@energywithmark.com.au' /tmp/live-home.html 2>/dev/null \
               && grep -Fq 'mark@energywithmark.com.au' /tmp/live-contact.html 2>/dev/null \
               && grep -Fq 'mark@energywithmark.com.au' /tmp/live-book.html 2>/dev/null \
+              && grep -Fq 'mark@energywithmark.com.au' /tmp/live-upload.html 2>/dev/null \
+              && grep -Fq 'mark@energywithmark.com.au' /tmp/live-calculator.html 2>/dev/null \
+              && grep -Fq 'mark@energywithmark.com.au' /tmp/live-privacy.html 2>/dev/null \
+              && grep -Fq 'name="marketingConsent"' /tmp/live-home.html 2>/dev/null \
+              && grep -Fq 'name="marketingConsent"' /tmp/live-contact.html 2>/dev/null \
+              && grep -Fq 'name="marketingConsent"' /tmp/live-book.html 2>/dev/null \
+              && grep -Fq 'name="marketingConsent"' /tmp/live-upload.html 2>/dev/null \
+              && grep -Fq 'name="marketingConsent"' /tmp/live-calculator.html 2>/dev/null \
+              && grep -Fq 'id="marketing-emails"' /tmp/live-privacy.html 2>/dev/null \
               && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-home.html 2>/dev/null \
               && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-contact.html 2>/dev/null \
               && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-book.html 2>/dev/null \
+              && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-upload.html 2>/dev/null \
+              && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-calculator.html 2>/dev/null \
+              && ! grep -Fq 'mark.fitzpatrick@classaenergy.com.au' /tmp/live-privacy.html 2>/dev/null \
               && grep -Fq "$endpoint" /tmp/live-quick.js 2>/dev/null \
               && grep -Fq "$endpoint" /tmp/live-calculator.js 2>/dev/null \
               && grep -Fq "ewmV3Hardened" /tmp/live-quick.js 2>/dev/null \
               && grep -Fq "ewmV3Hardened" /tmp/live-calculator.js 2>/dev/null \
               && ! grep -Fq "script.google.com" /tmp/live-quick.js 2>/dev/null \
               && ! grep -Fq "script.google.com" /tmp/live-calculator.js 2>/dev/null; then
-              echo "Live public site contains the native V3 intake contract."
+              echo "Live public site contains the V3 intake contract and V4 branded contact/consent rollout."
               exit 0
             fi
             sleep 10
           done
 
-          echo "The Pages deployment did not expose the V3 intake cutover within the smoke-test window."
+          echo "The Pages deployment did not expose the complete V3/V4 public rollout within the smoke-test window."
           exit 1
