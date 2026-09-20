@@ -163,7 +163,7 @@ jobs:
           node - /tmp/ewm-visibility-proof <<'NODE'
           const fs = require('node:fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          const expected = 'eb4f8c54678d20477d8ed2bdb8ac058e';
+          const expected = 'ba0fbbacb1cd2309ccac457b151b9e85';
           if (body?.deployment?.commitFingerprint !== expected) {
             throw new Error(`Visibility hotfix fingerprint mismatch: ${body?.deployment?.commitFingerprint || 'missing'}`);
           }
