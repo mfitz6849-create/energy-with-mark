@@ -164,7 +164,7 @@ jobs:
           const fs = require('node:fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           if (body?.version !== 'v5') throw new Error('V5 readiness version mismatch');
-          const evidence = body?.operationalEvidence || {};
+          const evidence = body?.operationalState || {};
           if (!Number.isFinite(Number(evidence.websiteIntakeRecords))) throw new Error('Website intake aggregate is unavailable');
           if (!Number.isFinite(Number(evidence.websiteBillRecords))) throw new Error('Website bill aggregate is unavailable');
           console.log(JSON.stringify({
