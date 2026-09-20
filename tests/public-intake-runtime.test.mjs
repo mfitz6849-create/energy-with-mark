@@ -206,6 +206,7 @@ test('bill receipt verifier is polled without customer data and the runtime is c
   const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
   assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
+  assert.match(runtime, /NATIVE_BILL_RECEIPT_ENABLED = false/);
   assert.match(runtime, /encodeURIComponent\(requestId\)/);
   assert.match(runtime, /credentials: 'omit'/);
   assert.match(runtime, /receipt\?\.fileStored/);
