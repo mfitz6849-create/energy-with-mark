@@ -203,9 +203,13 @@ jobs:
           if (Number(body.operationalState.websiteIntakeRecords) < 1) throw new Error('Expected existing website intake evidence');
           if (Number(body.operationalState.websiteBillRecords) < 1) throw new Error('Expected existing website bill evidence');
           if (Number(body.operationalState.websiteBillFilesLinked) < 1) throw new Error('Expected existing website bill Drive linkage');
-          if (Number(body.operationalState.websiteBillEvidenceRecords) < 1) throw new Error('Expected automatic website bill evidence persistence');
+          if (Number(body.operationalState.websiteBillPendingReviewBlankError) > 0) throw new Error('Recovered bill is still stranded in blank-error Pending Review');
+          if (Number(body.operationalState.websiteBillEvidenceRecords) < 1) {
+            if (Number(body.operationalState.websiteBillPendingReviewWithError) > 0) throw new Error('Recovered bill reached processing but failed closed with a genuine review error');
+            throw new Error('Expected automatic website bill evidence persistence');
+          }
           if (Number(body.operationalState.websiteBillAnalyses) < 1) throw new Error('Expected automatic website bill analysis persistence');
-          console.log('Build 61E exact deployment, recovery heartbeat, recovered Drive linkage and automatic bill processing verified.');
+          console.log('Build 61E exact deployment, safe requeue, recovery heartbeat, Drive linkage and automatic bill processing verified.');
           NODE
 
 
