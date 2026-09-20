@@ -13,35 +13,6 @@
 <div id="billReceiptPanel" class="form-card" role="status" aria-live="polite" style="display:none"><div class="eyebrow">Assessment started</div><h2>Thanks — your assessment has started.</h2><p id="billReceiptWaiting">Your bill has been sent securely. You do not need to upload it again. I’ll contact you if anything is missing.</p><div class="receipt-next"><div><strong>1. I review the bill</strong><span>I check usage, costs, tariff details and any solar credits shown.</span></div><div><strong>2. I identify what matters</strong><span>I look for the main savings opportunity, problem or missing information.</span></div><div><strong>3. I prepare the next step</strong><span>If I need anything else, I’ll tell you exactly what I need.</span></div></div><iframe id="billReceiptFrame" name="ewmBillReceipt" title="Bill upload result" style="width:100%;min-height:120px;border:0;background:#f7f7f3" referrerpolicy="no-referrer"></iframe><div class="btns" style="margin-top:16px"><a class="btn btn-primary" href="book.html">Book a Call</a><a class="btn btn-secondary" href="index.html">Back to Energy With Mark</a></div></div></div></div></section>
 </main>
 <footer class="footer"><div class="container footer-grid"><div><h3>Energy With Mark</h3><p>Mark Fitzpatrick · Renewable Energy Specialist</p><p><a href="tel:+61434151237">0434 151 237</a><br/><a href="mailto:mark@energywithmark.com.au">mark@energywithmark.com.au</a></p></div><div><h3>About & transparency</h3><p><a href="how-i-help.html">How Mark Helps</a><br/><a href="how-i-get-paid.html">How I Get Paid</a><br/><a href="who-i-work-with.html">Who I Work With</a><br/><a href="service-relationship.html">How the Service Works</a></p></div><div><h3>Your next step</h3><p><a href="index.html#solar-check">60 Second Check</a><br/><a href="calculator.html">Full Calculator</a><br/><a href="upload-bill.html">Free Full Energy Assessment</a><br/><a href="book.html">Book a Call</a></p></div></div><div class="container footer-small"><a href="privacy.html">Privacy policy</a></div></footer>
-<script src="script.js?v=20260920-durable-bill-v4"></script>
-<script>
-(() => {
-  const BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
-  const form = document.querySelector('form[data-form-type="bill_upload"]');
-  const receiptPanel = document.getElementById('billReceiptPanel');
-  const receiptFrame = document.getElementById('billReceiptFrame');
-  const waiting = document.getElementById('billReceiptWaiting');
-  if (!form || !receiptPanel || !receiptFrame) return;
-  const button = form.querySelector('[type="submit"]');
-  const errorBox = form.querySelector('.form-error');
-  const statusBox = form.querySelector('.submit-status');
-  let submitted = false;
-  let completedTracked = false;
-  const showError = message => { if (statusBox) statusBox.textContent=''; if(errorBox){errorBox.textContent=message;errorBox.style.display='block';} if(button)button.disabled=false; };
-  const makeRequestId = () => { const rand=(window.crypto&&crypto.getRandomValues)?Array.from(crypto.getRandomValues(new Uint32Array(2))).map(v=>v.toString(36)).join(''):Math.random().toString(36).slice(2)+Date.now().toString(36); return ('ewm-bill-'+Date.now().toString(36)+'-'+rand).slice(0,78); };
-  const fileToBase64 = file => new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('I could not read that file. Please choose it again.'));reader.onload=()=>{const raw=String(reader.result||'');const comma=raw.indexOf(',');resolve(comma>=0?raw.slice(comma+1):raw);};reader.readAsDataURL(file);});
-  receiptFrame.addEventListener('load',()=>{if(!submitted||completedTracked)return;completedTracked=true;try{window.gtag?.('event','bill_upload_complete',{form_type:'full_energy_assessment'});}catch(_){}});
-  form.addEventListener('submit', async event => {
-    event.preventDefault(); event.stopImmediatePropagation(); if(!form.reportValidity())return; if(errorBox)errorBox.style.display='none';
-    const fileInput=form.elements.billFile; const file=fileInput?.files?.[0]; if(!file)return showError('Please choose one power bill.'); if(fileInput.files.length!==1)return showError('Please send one bill at a time.');
-    const allowedTypes=['application/pdf','image/jpeg','image/png']; const allowedExtension=/\.(pdf|jpe?g|png)$/i.test(file.name||''); if(!allowedTypes.includes(file.type)||!allowedExtension)return showError('Please use a PDF, JPG or PNG.'); if(file.size>5*1024*1024)return showError('That file is over 5 MB. Please use a smaller file.');
-    if(button)button.disabled=true; if(statusBox)statusBox.textContent='Preparing your bill…';
-    try{
-      const fd=new FormData(form); const requestId=makeRequestId(); const dataBase64=await fileToBase64(file); const params=new URLSearchParams(location.search);
-      const payload={type:'bill_upload',fields:{name:String(fd.get('name')||'').trim(),phone:String(fd.get('phone')||'').trim(),email:String(fd.get('email')||'').trim(),address:String(fd.get('address')||'').trim(),postcode:String(fd.get('postcode')||'').trim(),customerType:'',helpWith:String(fd.get('helpWith')||'').trim(),existingSolar:'',billAmount:'',notes:String(fd.get('notes')||'').trim(),website:String(fd.get('website')||'').trim(),privacyNoticeVersion:String(fd.get('privacyNoticeVersion')||''),privacyAcknowledged:fd.get('privacyAcknowledged')==='Yes',sourcePage:'/upload-bill.html',landingPage:'/upload-bill.html',clientRequestId:requestId,utmSource:params.get('utm_source')||'',utmMedium:params.get('utm_medium')||'',utmCampaign:params.get('utm_campaign')||''},files:[{name:file.name,mimeType:file.type,category:'Electricity Bill',dataBase64}]};
-      const transport=document.createElement('form');transport.method='POST';transport.action=BILL_ENDPOINT;transport.target=receiptFrame.name;transport.style.display='none';const add=(name,value)=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;transport.appendChild(input);};add('responseMode','iframe');add('parentOrigin',window.location.origin);add('payload',JSON.stringify(payload));document.body.appendChild(transport);
-      if(statusBox)statusBox.textContent='Sending your bill…'; form.style.display='none';receiptPanel.style.display='block';receiptPanel.scrollIntoView({behavior:'smooth',block:'center'});submitted=true;transport.submit();setTimeout(()=>transport.remove(),1000);try{window.gtag?.('event','bill_upload_submit',{form_type:'full_energy_assessment'});}catch(_){ } if(waiting)setTimeout(()=>{waiting.textContent='Your bill has been sent securely. You do not need to upload it again. I’ll contact you if anything is missing.';},1800);
-    }catch(err){submitted=false;showError(err&&err.message?err.message:'I could not prepare that bill. Please try again.');}
-  },true);
-})();
-</script></body></html>
+<script src="script.js?v=20260920-native-bill-v5"></script>
+<noscript><div class="container"><p class="notice">JavaScript is required to upload a bill securely. Please enable JavaScript and reload this page.</p></div></noscript>
+</body></html>
