@@ -22,7 +22,7 @@ function functionBody(name, nextName) {
 }
 
 test('core runtime always loads the conversion layer', () => {
-  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-durable-bill-v4'\)/);
+  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-native-bill-v5'\)/);
   assert.match(core, /script\[src\*="conversion-v1\.js"\]/);
   assert.match(core, /document\.body\.appendChild\(conversionScript\)/);
 });
@@ -37,15 +37,11 @@ test('native V3 transport is CORS, idempotency and acknowledgement guarded', () 
   assert.match(body, /!response\.ok \|\| !body\?\.ok/);
 });
 
-test('legacy iframe acknowledgement remains restricted to bill-file transport', () => {
-  const body = functionBody('verifiedIframeSubmit', 'directV3Submit');
-  assert.match(body, /LEGACY_BILL_ENDPOINT/);
-  assert.match(body, /event\.origin === 'https:\/\/script\.google\.com'/);
-  assert.match(body, /event\.origin\.endsWith\('\.googleusercontent\.com'\)/);
-  assert.match(body, /message\.source !== expectedSource/);
-  assert.match(body, /result\.requestId !== payload\?\.fields\?\.clientRequestId/);
-  assert.match(body, /if \(!result\.ok\)/);
+test('legacy Apps Script bill carrier is absent from the active public runtime', () => {
+  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-bill-upload\/v1'/);
+  assert.doesNotMatch(runtime, /LEGACY_BILL_ENDPOINT|verifiedIframeSubmit|script\.google\.com|googleusercontent\.com/);
   assert.doesNotMatch(runtime, /energy-with-mark-assessment-submit/);
+  assert.doesNotMatch(billPage, /script\.google\.com/);
 });
 
 test('quick-check success is shown only after native V3 acknowledgement', () => {
@@ -68,31 +64,26 @@ test('full-calculator success is shown only after native V3 acknowledgement', ()
   assert.match(body, /journey: 'full_calculator'/);
 });
 
-test('bill upload pre-registers in native D1 before transferring the file and then enriches the same intake', () => {
+test('bill upload pre-registers in native D1 before sending the exact file to Control Centre storage', () => {
   const body = functionBody('hardenBillUpload', 'hardenGeneralEnquiry');
   const clone = body.indexOf('const form = oldForm.cloneNode(true)');
   const preRegister = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
   const pendingMarker = body.indexOf('billUploadPending: true', preRegister);
-  const fileReceipt = body.indexOf('const uploadReceipt = await verifiedIframeSubmit');
-  const nativeReceipt = body.indexOf('await waitForNativeBillReceipt(requestId');
-  const enrich = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'", preRegister + 1);
+  const submissionId = body.indexOf("const submissionId = clean(registration?.submissionId)", preRegister);
+  const fileUpload = body.indexOf('await nativeBillFileUpload({', submissionId);
+  const receiptCheck = body.indexOf('await waitForNativeBillReceipt(activeRequestId', fileUpload);
   const receipt = body.indexOf("receiptPanel.style.display = 'block'");
-  assert.ok(clone >= 0, 'bill upload must replace the legacy form listeners');
+  assert.ok(clone >= 0, 'bill upload must replace any page-level fallback listener');
   assert.ok(preRegister > clone, 'bill upload must register the customer/intake before file transfer');
-  assert.ok(pendingMarker > preRegister && pendingMarker < fileReceipt, 'pre-registration must explicitly mark the file as pending');
-  assert.ok(fileReceipt > preRegister, 'file transfer must start only after native registration is attempted');
-  assert.ok(nativeReceipt > fileReceipt, 'bill upload may check native receipt evidence after carrier acknowledgement');
-  assert.ok(enrich > fileReceipt, 'the same request id must be enriched with legacy file evidence after transfer');
-  assert.ok(receipt > enrich, 'confirmed flow must show the receipt panel after the evidence-link attempt');
-  assert.match(body, /File receipt is already confirmed/);
-  assert.doesNotMatch(body, /throw new Error\(\`System link could not be confirmed/);
-  assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
-  assert.match(body, /legacyUploadConfirmed: true/);
-  assert.match(body, /preRegistered/);
-  assert.match(body, /verified Website Intake compatibility feed will recover the exact bill/);
-  assert.match(body, /confirmation is taking longer than usual/i);
-  assert.match(body, /You do not need to upload it again/);
-  assert.match(body, /bill_upload_sent_confirmation_pending/);
+  assert.ok(pendingMarker > preRegister && pendingMarker < fileUpload, 'pre-registration must explicitly mark the file as pending');
+  assert.ok(submissionId > preRegister && submissionId < fileUpload, 'file upload must use the canonical submission id returned by D1');
+  assert.ok(fileUpload > preRegister, 'native file transfer must start only after successful D1 registration');
+  assert.ok(receiptCheck > fileUpload, 'bill upload should read back the native D1 receipt after file storage');
+  assert.ok(receipt > fileUpload, 'confirmed flow must show the receipt panel only after native file storage');
+  assert.match(body, /activeRequestId/);
+  assert.match(body, /activeSubmissionId/);
+  assert.match(body, /native_control_centre_file/);
+  assert.doesNotMatch(body, /legacyUploadConfirmed|legacyFileFolderId|verifiedIframeSubmit|dataBase64/);
 });
 
 test('general enquiry goes directly to V3 and waits for acknowledgement', () => {
@@ -210,18 +201,20 @@ test('quick-check and calculator fallbacks cannot escape native V3 intake', () =
 });
 
 
-test('bill receipt verifier is polled without customer data and the runtime is cache-busted', async () => {
+test('native bill file upload and receipt verifier are cache-busted and customer-safe', async () => {
   const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
+  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-bill-upload\/v1'/);
   assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
-  assert.match(runtime, /NATIVE_BILL_RECEIPT_ENABLED = false/);
-  assert.match(runtime, /encodeURIComponent\(requestId\)/);
+  assert.match(runtime, /window\.crypto\.subtle\.digest\('SHA-256'/);
+  assert.match(runtime, /'X-EWM-Submission-ID': submissionId/);
+  assert.match(runtime, /'X-EWM-Content-SHA256': contentSha256/);
   assert.match(runtime, /credentials: 'omit'/);
   assert.match(runtime, /receipt\?\.fileStored/);
-  assert.match(runtime, /nativeReceiptConfirmed: true/);
-  assert.match(script, /conversion-v1\.js\?v=20260920-durable-bill-v4/);
-  assert.match(bill, /script\.js\?v=20260920-durable-bill-v4/);
+  assert.match(script, /conversion-v1\.js\?v=20260920-native-bill-v5/);
+  assert.match(bill, /script\.js\?v=20260920-native-bill-v5/);
+  assert.doesNotMatch(runtime, /script\.google\.com/);
+  assert.doesNotMatch(bill, /script\.google\.com/);
   assert.match(bill, /Thanks — your assessment has started/);
   assert.doesNotMatch(bill, /Your bill is with Mark/);
-  assert.doesNotMatch(bill, /I’ll use it as the starting point/);
 });
