@@ -8,13 +8,6 @@ on:
       - "*.js"
       - "tests/public-intake-runtime.test.mjs"
       - ".github/workflows/public-site-intake-gate.yml"
-  push:
-    branches: [main]
-    paths:
-      - "*.html"
-      - "*.js"
-      - "tests/public-intake-runtime.test.mjs"
-      - ".github/workflows/public-site-intake-gate.yml"
   workflow_dispatch:
 
 permissions:
