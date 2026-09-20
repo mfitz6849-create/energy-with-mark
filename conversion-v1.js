@@ -3,7 +3,7 @@
 
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
-  const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/receipt/v1';
+  const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
@@ -73,7 +73,7 @@
 
   const readNativeBillReceipt = async requestId => {
     try {
-      const response = await fetch(`${BILL_RECEIPT_ENDPOINT}?requestId=${encodeURIComponent(requestId)}`, {
+      const response = await fetch(`${BILL_RECEIPT_ENDPOINT}&requestId=${encodeURIComponent(requestId)}`, {
         method: 'GET',
         mode: 'cors',
         cache: 'no-store',
