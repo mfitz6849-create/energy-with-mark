@@ -162,7 +162,7 @@ jobs:
           set -euo pipefail
           v3_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v3"
           v5_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
-          expected_fingerprint="5cfbd6cb04e22c91fd1572650badbb2a"
+          expected_fingerprint="463db49027ae63990acae8e81525dac2"
 
           v3_status="$(curl -sS --max-time 15 -o /tmp/ewm-v3-61c -w '%{http_code}' -H 'Cache-Control: no-cache' "$v3_url")"
           echo "Google Sheets recovery prerequisite status: $v3_status"
@@ -183,7 +183,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync('/tmp/ewm-v5-61b','utf8'));
-          const expected = '5cfbd6cb04e22c91fd1572650badbb2a';
+          const expected = '463db49027ae63990acae8e81525dac2';
           if (body?.version !== 'v5' || body?.ready !== true) throw new Error('V5 readiness is not ready');
           if (body?.deployment?.commitFingerprint !== expected) throw new Error('Build 61F fingerprint mismatch');
           for (const key of [
