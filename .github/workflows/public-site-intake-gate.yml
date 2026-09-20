@@ -190,6 +190,37 @@ jobs:
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
 
+      - name: Verify Build 66 Business State retirement observability
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
+          status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o /tmp/ewm-v5-build66 -w '%{http_code}' -H 'Cache-Control: no-cache' "$url")"
+          echo "Build 66 V5 readiness status: $status"
+          test "$status" = "200" -o "$status" = "202"
+          node - <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/ewm-v5-build66','utf8'));
+          const state = body?.operationalState || {};
+          for (const key of ['businessStateRetirementGateCount','businessStateRetirementPassedGates','businessStateObservationRequiredHours']) {
+            if (!Number.isFinite(Number(state[key]))) throw new Error('Missing Build 66 aggregate: '+key);
+          }
+          if (typeof state.businessStateRetirementReady !== 'boolean') throw new Error('Missing retirement readiness boolean');
+          if (!Array.isArray(state.businessStateRetirementFailedGateIds)) throw new Error('Missing failed gate IDs');
+          if (typeof state.businessStateMasterMode !== 'string') throw new Error('Missing master mode');
+          if (typeof state.businessStateLegacyProducerRecent !== 'boolean') throw new Error('Missing legacy producer recency boolean');
+          console.log('BUILD66_BUSINESS_STATE='+JSON.stringify({
+            ready: state.businessStateRetirementReady,
+            passedGates: Number(state.businessStateRetirementPassedGates),
+            gateCount: Number(state.businessStateRetirementGateCount),
+            failedGateIds: state.businessStateRetirementFailedGateIds,
+            masterMode: state.businessStateMasterMode,
+            promotionAgeHours: state.businessStatePromotionAgeHours,
+            observationRequiredHours: Number(state.businessStateObservationRequiredHours),
+            legacyProducerRecent: state.businessStateLegacyProducerRecent
+          }));
+          NODE
+
       - name: Verify existing-solar assessment path remains present
         run: |
           set -euo pipefail
