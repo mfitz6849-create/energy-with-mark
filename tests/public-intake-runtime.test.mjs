@@ -68,20 +68,25 @@ test('full-calculator success is shown only after native V3 acknowledgement', ()
   assert.match(body, /journey: 'full_calculator'/);
 });
 
-test('bill upload uses native receipt evidence and degrades to a calm no-resend state', () => {
+test('bill upload pre-registers in native D1 before transferring the file and then enriches the same intake', () => {
   const body = functionBody('hardenBillUpload', 'hardenGeneralEnquiry');
   const clone = body.indexOf('const form = oldForm.cloneNode(true)');
+  const preRegister = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
+  const pendingMarker = body.indexOf('billUploadPending: true', preRegister);
   const fileReceipt = body.indexOf('const uploadReceipt = await verifiedIframeSubmit');
   const nativeReceipt = body.indexOf('await waitForNativeBillReceipt(requestId');
-  const v3Receipt = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
+  const enrich = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'", preRegister + 1);
   const receipt = body.indexOf("receiptPanel.style.display = 'block'");
   assert.ok(clone >= 0, 'bill upload must replace the legacy form listeners');
-  assert.ok(fileReceipt > clone, 'bill upload must submit the file through the secure carrier');
-  assert.ok(nativeReceipt > fileReceipt, 'bill upload must check native receipt evidence after carrier acknowledgement');
-  assert.ok(v3Receipt > nativeReceipt, 'native V3 linking remains the bounded fallback when receipt evidence is not already present');
-  assert.ok(receipt > v3Receipt, 'confirmed flow must show the receipt panel after native state is safe');
+  assert.ok(preRegister > clone, 'bill upload must register the customer/intake before file transfer');
+  assert.ok(pendingMarker > preRegister && pendingMarker < fileReceipt, 'pre-registration must explicitly mark the file as pending');
+  assert.ok(fileReceipt > preRegister, 'file transfer must start only after native registration succeeds');
+  assert.ok(nativeReceipt > fileReceipt, 'bill upload may check native receipt evidence after carrier acknowledgement');
+  assert.ok(enrich > fileReceipt, 'the same request id must be enriched with legacy file evidence after transfer');
+  assert.ok(receipt > enrich, 'confirmed flow must show the receipt panel only after the native record is safe');
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
   assert.match(body, /legacyUploadConfirmed: true/);
+  assert.match(body, /Your assessment could not be registered securely yet/);
   assert.match(body, /confirmation is taking longer than usual/i);
   assert.match(body, /You do not need to upload it again/);
   assert.match(body, /bill_upload_sent_confirmation_pending/);
