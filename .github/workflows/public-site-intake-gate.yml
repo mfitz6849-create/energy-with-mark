@@ -102,6 +102,7 @@ jobs:
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
           v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
+          v5_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
           origin="https://energywithmark.com.au"
 
           root_status="$(curl -sS -o /tmp/ewm-root-body -D /tmp/ewm-root-headers -w '%{http_code}' "https://intake.energywithmark.com.au/")"
@@ -135,6 +136,17 @@ jobs:
           grep -q '"ok":false' /tmp/ewm-invalid-body
           grep -q 'Please provide your name, phone, valid email and consent' /tmp/ewm-invalid-body
 
+          receipt_request_id="ewm-bill-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          receipt_status="$(curl -sS --max-time 15 -o /tmp/ewm-bill-receipt-body -D /tmp/ewm-bill-receipt-headers -w '%{http_code}'             "$endpoint?receipt=bill&requestId=$receipt_request_id"             -H "Origin: $origin")"
+          echo "Read-only bill receipt verifier status: $receipt_status"
+          cat /tmp/ewm-bill-receipt-body || true
+          test "$receipt_status" = "200"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-bill-receipt-headers
+          grep -Fq '"ok":true' /tmp/ewm-bill-receipt-body
+          grep -Fq '"received":false' /tmp/ewm-bill-receipt-body
+          grep -Fq '"fileStored":false' /tmp/ewm-bill-receipt-body
+          grep -Fq '"status":"waiting"' /tmp/ewm-bill-receipt-body
+
           readiness_status="$(curl -sS --max-time 15 -o /tmp/ewm-v4-premerge-readiness -w '%{http_code}' "$v4_readiness_url" || true)"
           echo "V4 production readiness status: $readiness_status"
           cat /tmp/ewm-v4-premerge-readiness || true
@@ -144,8 +156,24 @@ jobs:
           grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
-          # Native bill-receipt verification is source-gated here and remains runtime-disabled
-          # until the corresponding Worker release is independently production-proven.
+          v5_status="$(curl -sS --max-time 15 -o /tmp/ewm-v5-premerge-readiness -w '%{http_code}' "$v5_readiness_url" || true)"
+          echo "V5 production readiness status: $v5_status"
+          cat /tmp/ewm-v5-premerge-readiness || true
+          test "$v5_status" = "200" -o "$v5_status" = "202"
+          node - /tmp/ewm-v5-premerge-readiness <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body?.version !== 'v5') throw new Error('V5 readiness version mismatch');
+          const evidence = body?.operationalState || {};
+          if (!Number.isFinite(Number(evidence.websiteIntakeRecords))) throw new Error('Website intake aggregate is unavailable');
+          if (!Number.isFinite(Number(evidence.websiteBillRecords))) throw new Error('Website bill aggregate is unavailable');
+          console.log(JSON.stringify({
+            websiteIntakeRecords: Number(evidence.websiteIntakeRecords),
+            websiteBillRecords: Number(evidence.websiteBillRecords),
+            latestWebsiteIntakeAt: evidence.latestWebsiteIntakeAt || null,
+            latestWebsiteBillAt: evidence.latestWebsiteBillAt || null,
+          }));
+          NODE
 
       - name: Verify existing-solar assessment path remains present
         run: |
