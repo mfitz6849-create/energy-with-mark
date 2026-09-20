@@ -176,6 +176,14 @@ jobs:
           console.log('Build 61C Google Sheets OAuth prerequisite verified.');
           NODE
 
+          receipt_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill&requestId=ewm-bill-mu9brpj2-abi5kh1ojhi2a"
+          receipt_status="$(curl -sS --max-time 15 -o /tmp/ewm-61c-target-receipt -w '%{http_code}' -H 'Origin: https://energywithmark.com.au' "$receipt_url")"
+          echo "Existing D1 target identity receipt status: $receipt_status"
+          cat /tmp/ewm-61c-target-receipt || true
+          test "$receipt_status" = "200"
+          grep -Fq '"received":true' /tmp/ewm-61c-target-receipt
+          grep -Fq '"fileStored":false' /tmp/ewm-61c-target-receipt
+
           status="$(curl -sS --max-time 15 -o /tmp/ewm-v5-61b -w '%{http_code}' -H 'Cache-Control: no-cache' "$v5_url")"
           echo "Build 61C production proof status: $status"
           cat /tmp/ewm-v5-61b || true
