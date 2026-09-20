@@ -14,18 +14,6 @@ on:
       - "robots.txt"
       - "sitemap.xml"
       - ".github/workflows/website-growth-agent*.yml"
-  push:
-    branches: [main]
-    paths:
-      - "articles/**"
-      - "scripts/website-growth-agent.mjs"
-      - "tests/website-growth-agent.test.mjs"
-      - "growth-agent-policy.json"
-      - "growth-agent-status.json"
-      - "llms.txt"
-      - "robots.txt"
-      - "sitemap.xml"
-      - ".github/workflows/website-growth-agent*.yml"
 
 permissions:
   contents: read
