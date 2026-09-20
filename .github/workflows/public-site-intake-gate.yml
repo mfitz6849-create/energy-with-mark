@@ -42,6 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
+          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/receipt/v1" conversion-v1.js
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
           grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
@@ -142,6 +143,17 @@ jobs:
           grep -Fq '"schemaReady":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
+
+          receipt_url="https://intake.energywithmark.com.au/api/public/website-intake/receipt/v1?requestId=ewm-bill-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          receipt_status="$(curl -sS --max-time 15 -o /tmp/ewm-bill-receipt -D /tmp/ewm-bill-receipt-headers -w '%{http_code}'             -H "Origin: $origin"             -H 'Cache-Control: no-cache'             "$receipt_url")"
+          echo "Bill receipt verifier status: $receipt_status"
+          cat /tmp/ewm-bill-receipt || true
+          test "$receipt_status" = "200"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-bill-receipt-headers
+          grep -Fq '"ok":true' /tmp/ewm-bill-receipt
+          grep -Fq '"received":false' /tmp/ewm-bill-receipt
+          grep -Fq '"fileStored":false' /tmp/ewm-bill-receipt
+          grep -Fq '"status":"waiting"' /tmp/ewm-bill-receipt
 
       - name: Verify existing-solar assessment path remains present
         run: |
