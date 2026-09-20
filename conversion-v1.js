@@ -1,4 +1,4 @@
-(() => {
+// Production receipt verification probe: 2026-09-20. Remove after CI confirmation.\n(() => {
   'use strict';
 
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
