@@ -2,7 +2,7 @@
   'use strict';
 
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
-  const NATIVE_BILL_UPLOAD_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-bill-upload/v1';
+  const NATIVE_BILL_UPLOAD_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file';
   const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
