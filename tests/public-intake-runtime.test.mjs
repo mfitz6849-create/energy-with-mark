@@ -205,7 +205,7 @@ test('quick-check and calculator fallbacks cannot escape native V3 intake', () =
 test('bill receipt verifier is polled without customer data and the runtime is cache-busted', async () => {
   const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
-  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/receipt\/v1'/);
+  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
   assert.match(runtime, /encodeURIComponent\(requestId\)/);
   assert.match(runtime, /credentials: 'omit'/);
   assert.match(runtime, /receipt\?\.fileStored/);
