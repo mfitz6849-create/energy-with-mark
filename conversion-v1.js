@@ -3,6 +3,7 @@
 
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/receipt/v1';
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
@@ -68,7 +69,36 @@
     } catch (_) { return null; }
   };
 
-  const verifiedIframeSubmit = ({ payload, expectedSource, timeoutMs = 25000, timeoutMessage }) => new Promise((resolve, reject) => {
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  const readNativeBillReceipt = async requestId => {
+    try {
+      const response = await fetch(`${BILL_RECEIPT_ENDPOINT}?requestId=${encodeURIComponent(requestId)}`, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) return null;
+      const body = await response.json().catch(() => null);
+      return body?.ok ? body : null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const waitForNativeBillReceipt = async (requestId, timeoutMs = 12000, intervalMs = 900) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const receipt = await readNativeBillReceipt(requestId);
+      if (receipt?.fileStored) return receipt;
+      await sleep(intervalMs);
+    }
+    return null;
+  };
+
+  const verifiedIframeSubmit = ({ payload, expectedSource, timeoutMs = 14000, timeoutMessage }) => new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.name = `ewm_verified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     iframe.title = 'Energy With Mark secure submission acknowledgement';
@@ -109,6 +139,12 @@
       cleanup();
       reject(new Error(message));
     };
+    const succeed = result => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      resolve(result);
+    };
     const onMessage = event => {
       const googleOrigin = event.origin === 'https://script.google.com' || event.origin.endsWith('.googleusercontent.com');
       if (!googleOrigin) return;
@@ -117,15 +153,27 @@
       const result = message.payload;
       if (result.requestId !== payload?.fields?.clientRequestId) return;
       if (!result.ok) return fail(result.error || 'The submission could not be accepted.');
-      if (finished) return;
-      finished = true;
-      cleanup();
-      resolve(result);
+      succeed(result);
+    };
+
+    const pollNativeReceipt = async () => {
+      const requestId = clean(payload?.fields?.clientRequestId);
+      if (!requestId) return;
+      const receipt = await waitForNativeBillReceipt(requestId, Math.max(2500, timeoutMs - 700), 900);
+      if (!receipt?.fileStored || finished) return;
+      succeed({
+        ok: true,
+        requestId,
+        fileStored: true,
+        nativeReceiptConfirmed: true,
+        transport: 'native_bill_receipt_verifier'
+      });
     };
 
     window.addEventListener('message', onMessage);
-    timer = setTimeout(() => fail(timeoutMessage || 'Your request was sent, but this page could not confirm it. Please do not send it again. Call Mark on 0434 151 237 so he can check.'), timeoutMs);
+    timer = setTimeout(() => fail(timeoutMessage || 'Your upload was sent securely, but confirmation is taking longer than usual. Please do not upload it again. I’ll check it and contact you only if anything is missing.'), timeoutMs);
     transport.submit();
+    void pollNativeReceipt();
   });
 
   const directV3Submit = async (payload, requestId, timeoutMs = 20000) => {
@@ -603,31 +651,37 @@
         const uploadReceipt = await verifiedIframeSubmit({
           payload,
           expectedSource: 'energy-with-mark-bill-upload-submit',
-          timeoutMs: 45000,
-          timeoutMessage: 'Your bill was sent, but this page could not confirm receipt. Please do not send it again. Call Mark on 0434 151 237 so he can check.'
+          timeoutMs: 14000,
+          timeoutMessage: 'Your upload was sent securely, but confirmation is taking longer than usual. Please do not upload it again. I’ll check it and contact you only if anything is missing.'
         });
         const receipt = uploadReceipt && typeof uploadReceipt === 'object' ? uploadReceipt : {};
+        const nativeReceipt = receipt.nativeReceiptConfirmed === true
+          ? receipt
+          : await waitForNativeBillReceipt(requestId, 2500, 500);
         const fileFolderId = clean(receipt.fileFolderId || receipt.folderId);
         const reportedFileCount = Number(receipt.fileCount || 0);
         const legacyFileCount = Number.isFinite(reportedFileCount) && reportedFileCount > 0 ? Math.floor(reportedFileCount) : (fileFolderId ? 1 : 0);
-        if (statusBox) statusBox.textContent = 'Linking your assessment to the Energy With Mark system…';
-        try {
-          await directV3Submit(assessmentToV3('bill_upload', payload, {
-            legacyUploadConfirmed: true,
-            legacyFileFolderId: fileFolderId,
-            legacyFileCount,
-            legacySubmissionId: clean(receipt.submissionId || receipt.id),
-            legacyUploadReceipt: {
-              ok: receipt.ok === true,
-              requestId: clean(receipt.requestId),
-              submissionId: clean(receipt.submissionId || receipt.id),
-              fileFolderId,
-              fileCount: legacyFileCount,
-              transport: 'secure_apps_script_bill_upload'
-            }
-          }), requestId);
-        } catch (linkError) {
-          throw new Error(`System link could not be confirmed after the bill receipt: ${linkError instanceof Error ? linkError.message : 'unknown error'}`);
+
+        if (!nativeReceipt?.fileStored) {
+          if (statusBox) statusBox.textContent = 'Linking your assessment to the Energy With Mark system…';
+          try {
+            await directV3Submit(assessmentToV3('bill_upload', payload, {
+              legacyUploadConfirmed: true,
+              legacyFileFolderId: fileFolderId,
+              legacyFileCount,
+              legacySubmissionId: clean(receipt.submissionId || receipt.id),
+              legacyUploadReceipt: {
+                ok: receipt.ok === true,
+                requestId: clean(receipt.requestId),
+                submissionId: clean(receipt.submissionId || receipt.id),
+                fileFolderId,
+                fileCount: legacyFileCount,
+                transport: 'secure_apps_script_bill_upload'
+              }
+            }), requestId);
+          } catch (linkError) {
+            throw new Error(`System link could not be confirmed after the bill receipt: ${linkError instanceof Error ? linkError.message : 'unknown error'}`);
+          }
         }
 
         if (existingSolar === 'Yes') saveExistingContext({
@@ -653,10 +707,25 @@
         try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: 'v3', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
       } catch (err) {
         const message = err instanceof Error ? err.message : 'I could not confirm that bill. Please call Mark on 0434 151 237.';
-        if (/system link could not be confirmed/i.test(message)) {
+        if (/confirmation is taking longer than usual/i.test(message)) {
+          if (statusBox) statusBox.textContent = '';
+          if (errorBox) errorBox.style.display = 'none';
+          const receiptPanel = document.getElementById('billReceiptPanel');
+          const waiting = document.getElementById('billReceiptWaiting');
+          const receiptFrame = document.getElementById('billReceiptFrame');
+          if (waiting) waiting.textContent = 'Your bill has been sent securely. You do not need to upload it again. I’ll check the receipt in the background and contact you only if anything is missing.';
+          if (receiptFrame) receiptFrame.style.display = 'none';
+          form.style.display = 'none';
+          if (button) button.disabled = true;
+          if (receiptPanel) {
+            receiptPanel.style.display = 'block';
+            receiptPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          try { window.gtag?.('event', 'bill_upload_sent_confirmation_pending', { form_type: 'full_energy_assessment' }); } catch (_) {}
+        } else if (/system link could not be confirmed/i.test(message)) {
           if (statusBox) statusBox.textContent = '';
           if (errorBox) {
-            errorBox.textContent = 'Your bill was received, but I could not confirm the system link. Please do not send the bill again. Call Mark on 0434 151 237 so he can check it.';
+            errorBox.textContent = 'Your bill was received and is safe. The Energy With Mark system link needs a background check, so there is nothing else for you to do. I’ll contact you only if anything is missing.';
             errorBox.style.display = 'block';
           }
           if (button) button.disabled = true;
