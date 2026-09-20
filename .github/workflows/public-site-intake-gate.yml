@@ -157,15 +157,15 @@ jobs:
 
           build61a_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
           build61a_status="$(curl -sS --max-time 15 -o /tmp/ewm-build61a-proof -w '%{http_code}' "$build61a_url" || true)"
-          echo "Build 61A retrigger production proof status: $build61a_status"
+          echo "Build 61A repaired production proof status: $build61a_status"
           cat /tmp/ewm-build61a-proof || true
           test "$build61a_status" = "200" -o "$build61a_status" = "202"
           node - /tmp/ewm-build61a-proof <<'NODE'
           const fs = require('node:fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          const expected = 'a4d66d5372f95344ea2889543a75f3d2';
+          const expected = 'fac810c6a4791147b9b999af76f15052';
           if (body?.deployment?.commitFingerprint !== expected) {
-            throw new Error(`Build 61A retrigger fingerprint mismatch: ${body?.deployment?.commitFingerprint || 'missing'}`);
+            throw new Error(`Build 61A repaired fingerprint mismatch: ${body?.deployment?.commitFingerprint || 'missing'}`);
           }
           const state = body?.operationalState || {};
           const intakeCount = Number(state.websiteIntakeRecords);
