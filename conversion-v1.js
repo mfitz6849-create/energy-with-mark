@@ -4,7 +4,8 @@
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
   const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill';
-  const NATIVE_BILL_RECEIPT_ENABLED = false;
+  const NATIVE_BILL_UPLOAD_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-bill-upload/v1';
+  const NATIVE_BILL_RECEIPT_ENABLED = true;
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
@@ -202,6 +203,41 @@
     const body = await response.json().catch(() => ({}));
     if (!response.ok || !body?.ok) throw new Error(body?.message || 'The request could not be accepted.');
     return body;
+  };
+
+  const directNativeBillFileUpload = async ({ file, requestId, submissionId }, timeoutMs = 22000) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+    const form = new FormData();
+    form.append('requestId', requestId);
+    form.append('submissionId', submissionId);
+    form.append('file', file, file.name);
+    try {
+      const response = await fetch(NATIVE_BILL_UPLOAD_ENDPOINT, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Idempotency-Key': requestId },
+        body: form,
+        signal: controller.signal
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body?.ok || body?.fileStored !== true) {
+        const error = new Error(body?.message || 'The bill file could not be stored securely.');
+        error.retryable = response.status >= 500;
+        throw error;
+      }
+      return body;
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        const timedOut = new Error('The bill upload may still be completing.');
+        timedOut.retryable = true;
+        throw timedOut;
+      }
+      if (typeof error?.retryable !== 'boolean') error.retryable = true;
+      throw error;
+    } finally {
+      window.clearTimeout(timer);
+    }
   };
 
   const assessmentToV3 = (kind, payload, extra = {}) => {
@@ -650,24 +686,49 @@
         };
 
         let preRegistered = false;
+        let preRegistration = null;
         if (statusBox) statusBox.textContent = 'Starting your assessment securely…';
         try {
-          await directV3Submit(assessmentToV3('bill_upload', payload, {
+          preRegistration = await directV3Submit(assessmentToV3('bill_upload', payload, {
             billUploadPending: true
           }), requestId);
           preRegistered = true;
         } catch (_) {
-          // Secure file storage remains available during a short native-intake outage.
+          // Secure legacy file storage remains available during a short native-intake outage.
           // The verified Website Intake compatibility feed will recover the exact bill.
         }
 
         if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
-        const uploadReceipt = await verifiedIframeSubmit({
-          payload,
-          expectedSource: 'energy-with-mark-bill-upload-submit',
-          timeoutMs: 14000,
-          timeoutMessage: 'Your upload was sent securely, but confirmation is taking longer than usual. Please do not upload it again. I’ll check it and contact you only if anything is missing.'
-        });
+        let uploadReceipt = null;
+        const nativeSubmissionId = clean(preRegistration?.submissionId);
+        if (preRegistered && nativeSubmissionId) {
+          try {
+            uploadReceipt = await directNativeBillFileUpload({
+              file,
+              requestId,
+              submissionId: nativeSubmissionId
+            });
+          } catch (nativeError) {
+            const nativeReceipt = NATIVE_BILL_RECEIPT_ENABLED
+              ? await waitForNativeBillReceipt(requestId, 2800, 500)
+              : null;
+            if (nativeReceipt?.fileStored) {
+              uploadReceipt = { ...nativeReceipt, nativeReceiptConfirmed: true, transport: 'native_bill_receipt_verifier' };
+            } else if (nativeError?.retryable === false) {
+              throw nativeError;
+            }
+          }
+        }
+
+        if (!uploadReceipt) {
+          if (statusBox) statusBox.textContent = 'Using the secure backup bill-upload path…';
+          uploadReceipt = await verifiedIframeSubmit({
+            payload,
+            expectedSource: 'energy-with-mark-bill-upload-submit',
+            timeoutMs: 14000,
+            timeoutMessage: 'Your upload was sent securely, but confirmation is taking longer than usual. Please do not upload it again. I’ll check it and contact you only if anything is missing.'
+          });
+        }
         const receipt = uploadReceipt && typeof uploadReceipt === 'object' ? uploadReceipt : {};
         const nativeReceipt = receipt.nativeReceiptConfirmed === true
           ? receipt
