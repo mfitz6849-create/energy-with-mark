@@ -649,6 +649,15 @@
           files: [{ name: file.name, mimeType: file.type, category: 'Electricity Bill', dataBase64 }]
         };
 
+        if (statusBox) statusBox.textContent = 'Registering your assessment securely…';
+        try {
+          await directV3Submit(assessmentToV3('bill_upload', payload, {
+            billUploadPending: true
+          }), requestId);
+        } catch (registrationError) {
+          throw new Error(`Your assessment could not be registered securely yet. Please try again. ${registrationError instanceof Error ? registrationError.message : ''}`.trim());
+        }
+
         if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
         const uploadReceipt = await verifiedIframeSubmit({
           payload,
