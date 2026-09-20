@@ -206,10 +206,14 @@ test('native bill file upload and receipt verifier are cache-busted and customer
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
   assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-bill-upload\/v1'/);
   assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
-  assert.match(runtime, /window\.crypto\.subtle\.digest\('SHA-256'/);
-  assert.match(runtime, /'X-EWM-Submission-ID': submissionId/);
-  assert.match(runtime, /'X-EWM-Content-SHA256': contentSha256/);
+  assert.match(runtime, /const upload = new FormData\(\)/);
+  assert.match(runtime, /upload\.append\('requestId', requestId\)/);
+  assert.match(runtime, /upload\.append\('submissionId', submissionId\)/);
+  assert.match(runtime, /upload\.append\('file', file, file\.name\)/);
+  assert.match(runtime, /'Idempotency-Key': requestId/);
+  assert.match(runtime, /body: upload/);
   assert.match(runtime, /credentials: 'omit'/);
+  assert.doesNotMatch(runtime, /X-EWM-Submission-ID|X-EWM-Content-SHA256|X-EWM-File-Name/);
   assert.match(runtime, /receipt\?\.fileStored/);
   assert.match(script, /conversion-v1\.js\?v=20260920-native-bill-v5/);
   assert.match(bill, /script\.js\?v=20260920-native-bill-v5/);
