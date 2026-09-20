@@ -155,6 +155,25 @@ jobs:
           grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
+          v5_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
+          v5_status="$(curl -sS --max-time 15 -o /tmp/ewm-v5-reconcile-proof -w '%{http_code}' "$v5_readiness_url" || true)"
+          echo "V5 reconciliation proof status: $v5_status"
+          cat /tmp/ewm-v5-reconcile-proof || true
+          test "$v5_status" = "200" -o "$v5_status" = "202"
+          node - /tmp/ewm-v5-reconcile-proof <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body?.version !== 'v5') throw new Error('V5 readiness version mismatch');
+          const state = body?.operationalState || {};
+          const intakeCount = Number(state.websiteIntakeRecords);
+          const billCount = Number(state.websiteBillRecords);
+          const latestBillAt = typeof state.latestWebsiteBillAt === 'string' ? state.latestWebsiteBillAt : '';
+          console.log(JSON.stringify({ websiteIntakeRecords: intakeCount, websiteBillRecords: billCount, latestWebsiteBillAt: latestBillAt }));
+          if (!Number.isFinite(intakeCount) || intakeCount < 1) throw new Error('No website intake is present in live D1');
+          if (!Number.isFinite(billCount) || billCount < 1) throw new Error('No website bill intake is present in live D1');
+          if (!latestBillAt.startsWith('2026-09-20')) throw new Error('Latest D1 bill intake is not from the current production recovery date');
+          NODE
+
 
       - name: Verify existing-solar assessment path remains present
         run: |
