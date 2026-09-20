@@ -3,7 +3,8 @@
 
   const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
-  const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/receipt/v1';
+  const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill';
+  const NATIVE_BILL_RECEIPT_ENABLED = false;
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
@@ -73,7 +74,7 @@
 
   const readNativeBillReceipt = async requestId => {
     try {
-      const response = await fetch(`${BILL_RECEIPT_ENDPOINT}?requestId=${encodeURIComponent(requestId)}`, {
+      const response = await fetch(`${BILL_RECEIPT_ENDPOINT}&requestId=${encodeURIComponent(requestId)}`, {
         method: 'GET',
         mode: 'cors',
         cache: 'no-store',
@@ -157,6 +158,7 @@
     };
 
     const pollNativeReceipt = async () => {
+      if (!NATIVE_BILL_RECEIPT_ENABLED) return;
       const requestId = clean(payload?.fields?.clientRequestId);
       if (!requestId) return;
       const receipt = await waitForNativeBillReceipt(requestId, Math.max(2500, timeoutMs - 700), 900);
@@ -657,7 +659,9 @@
         const receipt = uploadReceipt && typeof uploadReceipt === 'object' ? uploadReceipt : {};
         const nativeReceipt = receipt.nativeReceiptConfirmed === true
           ? receipt
-          : await waitForNativeBillReceipt(requestId, 2500, 500);
+          : NATIVE_BILL_RECEIPT_ENABLED
+            ? await waitForNativeBillReceipt(requestId, 2500, 500)
+            : null;
         const fileFolderId = clean(receipt.fileFolderId || receipt.folderId);
         const reportedFileCount = Number(receipt.fileCount || 0);
         const legacyFileCount = Number.isFinite(reportedFileCount) && reportedFileCount > 0 ? Math.floor(reportedFileCount) : (fileFolderId ? 1 : 0);

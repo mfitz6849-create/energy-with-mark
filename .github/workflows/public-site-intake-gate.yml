@@ -42,6 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
+          grep -Fq "https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill" conversion-v1.js
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
           grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
@@ -142,6 +143,9 @@ jobs:
           grep -Fq '"schemaReady":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
+
+          # Native bill-receipt verification is source-gated here and remains runtime-disabled
+          # until the corresponding Worker release is independently production-proven.
 
       - name: Verify existing-solar assessment path remains present
         run: |

@@ -22,7 +22,7 @@ function functionBody(name, nextName) {
 }
 
 test('core runtime always loads the conversion layer', () => {
-  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-bill-receipt-v2'\)/);
+  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-bill-receipt-v3'\)/);
   assert.match(core, /script\[src\*="conversion-v1\.js"\]/);
   assert.match(core, /document\.body\.appendChild\(conversionScript\)/);
 });
@@ -205,13 +205,15 @@ test('quick-check and calculator fallbacks cannot escape native V3 intake', () =
 test('bill receipt verifier is polled without customer data and the runtime is cache-busted', async () => {
   const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
-  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/receipt\/v1'/);
+  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
+  assert.match(runtime, /NATIVE_BILL_RECEIPT_ENABLED = false/);
   assert.match(runtime, /encodeURIComponent\(requestId\)/);
   assert.match(runtime, /credentials: 'omit'/);
   assert.match(runtime, /receipt\?\.fileStored/);
   assert.match(runtime, /nativeReceiptConfirmed: true/);
-  assert.match(script, /conversion-v1\.js\?v=20260920-bill-receipt-v2/);
-  assert.match(bill, /script\.js\?v=20260920-bill-receipt-v2/);
+  assert.match(script, /conversion-v1\.js\?v=20260920-bill-receipt-v3/);
+  assert.match(bill, /script\.js\?v=20260920-bill-receipt-v3/);
   assert.match(bill, /Thanks — your assessment has started/);
   assert.doesNotMatch(bill, /Your bill is with Mark/);
+  assert.doesNotMatch(bill, /I’ll use it as the starting point/);
 });
