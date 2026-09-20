@@ -38,7 +38,7 @@ test('native V3 transport is CORS, idempotency and acknowledgement guarded', () 
 });
 
 test('legacy Apps Script bill carrier is absent from the active public runtime', () => {
-  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-bill-upload\/v1'/);
+  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?upload=bill-file'/);
   assert.doesNotMatch(runtime, /LEGACY_BILL_ENDPOINT|verifiedIframeSubmit|script\.google\.com|googleusercontent\.com/);
   assert.doesNotMatch(runtime, /energy-with-mark-assessment-submit/);
   assert.doesNotMatch(billPage, /script\.google\.com/);
@@ -204,7 +204,7 @@ test('quick-check and calculator fallbacks cannot escape native V3 intake', () =
 test('native bill file upload and receipt verifier are cache-busted and customer-safe', async () => {
   const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
-  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-bill-upload\/v1'/);
+  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?upload=bill-file'/);
   assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
   assert.match(runtime, /const upload = new FormData\(\)/);
   assert.match(runtime, /upload\.append\('requestId', requestId\)/);
