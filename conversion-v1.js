@@ -658,7 +658,7 @@
           preRegistered = true;
         } catch (_) {
           // Secure file storage remains available during a short native-intake outage.
-          // The direct private-Sheets reconciliation path will recover the exact bill.
+          // The verified Website Intake compatibility feed will recover the exact bill.
         }
 
         if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
@@ -696,8 +696,8 @@
               }
             }), requestId);
           } catch (_) {
-            // File receipt is already confirmed. The direct private-Sheets reconciliation
-            // path will attach this exact stored file to D1 without asking the customer again.
+            // File receipt is already confirmed. The verified Website Intake compatibility feed
+            // will attach this exact stored file to D1 without asking the customer again.
           }
         }
 
