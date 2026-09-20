@@ -486,13 +486,12 @@
     sync();
   };
 
-  const fileSha256 = async file => {
-    const digest = await window.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-  };
-
   const nativeBillFileUpload = async ({ file, submissionId, requestId, timeoutMs = 30000 }) => {
-    const contentSha256 = await fileSha256(file);
+    const upload = new FormData();
+    upload.append('requestId', requestId);
+    upload.append('submissionId', submissionId);
+    upload.append('file', file, file.name);
+
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     let response;
@@ -502,13 +501,9 @@
         mode: 'cors',
         credentials: 'omit',
         headers: {
-          'Content-Type': file.type,
-          'Idempotency-Key': requestId,
-          'X-EWM-Submission-ID': submissionId,
-          'X-EWM-File-Name': encodeURIComponent(file.name),
-          'X-EWM-Content-SHA256': contentSha256
+          'Idempotency-Key': requestId
         },
-        body: file,
+        body: upload,
         signal: controller.signal
       });
     } catch (error) {
