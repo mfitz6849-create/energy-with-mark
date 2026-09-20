@@ -67,19 +67,23 @@ test('full-calculator success is shown only after native V3 acknowledgement', ()
   assert.match(body, /journey: 'full_calculator'/);
 });
 
-test('bill upload confirms the private file receipt then links the assessment to V3', () => {
+test('bill upload uses native receipt evidence and degrades to a calm no-resend state', () => {
   const body = functionBody('hardenBillUpload', 'hardenGeneralEnquiry');
   const clone = body.indexOf('const form = oldForm.cloneNode(true)');
   const fileReceipt = body.indexOf('const uploadReceipt = await verifiedIframeSubmit');
+  const nativeReceipt = body.indexOf('await waitForNativeBillReceipt(requestId');
   const v3Receipt = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
   const receipt = body.indexOf("receiptPanel.style.display = 'block'");
   assert.ok(clone >= 0, 'bill upload must replace the legacy form listeners');
-  assert.ok(fileReceipt > clone, 'bill upload must first verify its file receipt');
-  assert.ok(v3Receipt > fileReceipt, 'bill upload must link to V3 after the file receipt');
-  assert.ok(receipt > v3Receipt, 'receipt panel must wait for both acknowledgements');
+  assert.ok(fileReceipt > clone, 'bill upload must submit the file through the secure carrier');
+  assert.ok(nativeReceipt > fileReceipt, 'bill upload must check native receipt evidence after carrier acknowledgement');
+  assert.ok(v3Receipt > nativeReceipt, 'native V3 linking remains the bounded fallback when receipt evidence is not already present');
+  assert.ok(receipt > v3Receipt, 'confirmed flow must show the receipt panel after native state is safe');
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
   assert.match(body, /legacyUploadConfirmed: true/);
-  assert.match(body, /Please do not send the bill again/);
+  assert.match(body, /confirmation is taking longer than usual/i);
+  assert.match(body, /You do not need to upload it again/);
+  assert.match(body, /bill_upload_sent_confirmation_pending/);
 });
 
 test('general enquiry goes directly to V3 and waits for acknowledgement', () => {
@@ -194,4 +198,19 @@ test('quick-check and calculator fallbacks cannot escape native V3 intake', () =
   }
   assert.match(quickFallback, /kind: 'quick_check'/);
   assert.match(calculatorFallback, /kind: 'calculator'/);
+});
+
+
+test('bill receipt verifier is polled without customer data and the runtime is cache-busted', async () => {
+  const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
+  const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
+  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/receipt\/v1'/);
+  assert.match(runtime, /encodeURIComponent\(requestId\)/);
+  assert.match(runtime, /credentials: 'omit'/);
+  assert.match(runtime, /receipt\?\.fileStored/);
+  assert.match(runtime, /nativeReceiptConfirmed: true/);
+  assert.match(script, /conversion-v1\.js\?v=20260920-bill-receipt-v2/);
+  assert.match(bill, /script\.js\?v=20260920-bill-receipt-v2/);
+  assert.match(bill, /Thanks — your assessment has started/);
+  assert.doesNotMatch(bill, /Your bill is with Mark/);
 });
