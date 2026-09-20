@@ -190,6 +190,45 @@ jobs:
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
 
+      - name: Verify Build 65 privacy-safe Gmail parity observability
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://intake.energywithmark.com.au/api/public/v5-readiness"
+          status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o /tmp/ewm-v5-build65 -w '%{http_code}' -H 'Cache-Control: no-cache' "$url")"
+          echo "Build 65 V5 readiness status: $status"
+          test "$status" = "200" -o "$status" = "202"
+          node - <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/ewm-v5-build65','utf8'));
+          const state = body?.operationalState || {};
+          const numeric = [
+            'directGmailParityObservedRuns',
+            'directGmailParityNonEmptyRuns',
+            'directGmailParityRepresentativeRuns',
+            'directGmailParityAttentionRuns',
+            'directGmailParityInspectedAttachments',
+            'directGmailParityMatches',
+            'directGmailParityExceptions'
+          ];
+          for (const key of numeric) {
+            if (!Number.isFinite(Number(state[key]))) throw new Error('Missing Build 65 aggregate: '+key);
+          }
+          if (!('directGmailParityLastCheckedAt' in state)) throw new Error('Missing directGmailParityLastCheckedAt');
+          if (typeof state.directGmailRepresentativeBillObserved !== 'boolean') throw new Error('Missing representative evidence boolean');
+          console.log('BUILD65_GMAIL_PARITY='+JSON.stringify({
+            observedRuns: Number(state.directGmailParityObservedRuns),
+            nonEmptyRuns: Number(state.directGmailParityNonEmptyRuns),
+            representativeRuns: Number(state.directGmailParityRepresentativeRuns),
+            attentionRuns: Number(state.directGmailParityAttentionRuns),
+            inspectedAttachments: Number(state.directGmailParityInspectedAttachments),
+            parityMatches: Number(state.directGmailParityMatches),
+            exceptions: Number(state.directGmailParityExceptions),
+            lastCheckedAt: state.directGmailParityLastCheckedAt,
+            representativeBillObserved: state.directGmailRepresentativeBillObserved
+          }));
+          NODE
+
       - name: Verify existing-solar assessment path remains present
         run: |
           set -euo pipefail
