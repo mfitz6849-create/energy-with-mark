@@ -68,18 +68,24 @@ test('full-calculator success is shown only after native V3 acknowledgement', ()
   assert.match(body, /journey: 'full_calculator'/);
 });
 
-test('bill upload uses native receipt evidence and degrades to a calm no-resend state', () => {
+test('bill upload pre-registers V3 before file transfer and later enriches the same intake', () => {
   const body = functionBody('hardenBillUpload', 'hardenGeneralEnquiry');
   const clone = body.indexOf('const form = oldForm.cloneNode(true)');
+  const firstV3 = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
+  const pendingMarker = body.indexOf('billUploadPending: true');
   const fileReceipt = body.indexOf('const uploadReceipt = await verifiedIframeSubmit');
   const nativeReceipt = body.indexOf('await waitForNativeBillReceipt(requestId');
-  const v3Receipt = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'");
+  const secondV3 = body.indexOf("await directV3Submit(assessmentToV3('bill_upload'", firstV3 + 1);
   const receipt = body.indexOf("receiptPanel.style.display = 'block'");
   assert.ok(clone >= 0, 'bill upload must replace the legacy form listeners');
-  assert.ok(fileReceipt > clone, 'bill upload must submit the file through the secure carrier');
-  assert.ok(nativeReceipt > fileReceipt, 'bill upload must check native receipt evidence after carrier acknowledgement');
-  assert.ok(v3Receipt > nativeReceipt, 'native V3 linking remains the bounded fallback when receipt evidence is not already present');
-  assert.ok(receipt > v3Receipt, 'confirmed flow must show the receipt panel after native state is safe');
+  assert.ok(firstV3 > clone, 'bill upload must register in V3');
+  assert.ok(pendingMarker > firstV3 && pendingMarker < fileReceipt, 'pre-registration must explicitly mark the bill upload pending');
+  assert.ok(fileReceipt > firstV3, 'secure file transfer must happen after V3 pre-registration is attempted');
+  assert.ok(nativeReceipt > fileReceipt, 'bill upload may check native receipt evidence after carrier acknowledgement');
+  assert.ok(secondV3 > fileReceipt, 'confirmed file evidence must be linked through the same idempotent V3 request');
+  assert.ok(receipt > secondV3, 'confirmed flow must show the receipt panel after the evidence-link attempt');
+  assert.match(body, /preRegistered/);
+  assert.match(body, /verified legacy feed can reconcile this exact bill later/);
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
   assert.match(body, /legacyUploadConfirmed: true/);
   assert.match(body, /confirmation is taking longer than usual/i);
