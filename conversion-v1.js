@@ -1,10 +1,9 @@
 (() => {
   'use strict';
 
-  const LEGACY_BILL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqgpvd3M2qv9XHuxqqna3ndpikbC0egGDHnTb4dXBtLBMnhIS4TppCuWq5OufTPZtEPQ/exec';
   const V3_INTAKE_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const NATIVE_BILL_UPLOAD_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-bill-upload/v1';
   const BILL_RECEIPT_ENDPOINT = 'https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill';
-  const NATIVE_BILL_RECEIPT_ENABLED = false;
   const PRIVACY_NOTICE_VERSION = '2026-08-14-v1';
   const MARKETING_CONSENT_VERSION = '2026-09-19-v1';
   const CONTEXT_KEY = 'ewmExistingSolarContext';
@@ -98,85 +97,6 @@
     }
     return null;
   };
-
-  const verifiedIframeSubmit = ({ payload, expectedSource, timeoutMs = 14000, timeoutMessage }) => new Promise((resolve, reject) => {
-    const iframe = document.createElement('iframe');
-    iframe.name = `ewm_verified_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    iframe.title = 'Energy With Mark secure submission acknowledgement';
-    iframe.setAttribute('aria-hidden', 'true');
-    iframe.tabIndex = -1;
-    iframe.style.cssText = 'position:absolute;width:1px;height:1px;border:0;left:-10000px;top:auto;overflow:hidden;';
-    document.body.appendChild(iframe);
-
-    const transport = document.createElement('form');
-    transport.method = 'POST';
-    transport.action = LEGACY_BILL_ENDPOINT;
-    transport.target = iframe.name;
-    transport.style.display = 'none';
-
-    const add = (name, fieldValue) => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = name;
-      input.value = fieldValue;
-      transport.appendChild(input);
-    };
-    add('responseMode', 'iframe');
-    add('parentOrigin', window.location.origin);
-    add('payload', JSON.stringify(payload));
-    document.body.appendChild(transport);
-
-    let finished = false;
-    let timer = null;
-    const cleanup = () => {
-      window.removeEventListener('message', onMessage);
-      if (timer) clearTimeout(timer);
-      transport.remove();
-      iframe.remove();
-    };
-    const fail = message => {
-      if (finished) return;
-      finished = true;
-      cleanup();
-      reject(new Error(message));
-    };
-    const succeed = result => {
-      if (finished) return;
-      finished = true;
-      cleanup();
-      resolve(result);
-    };
-    const onMessage = event => {
-      const googleOrigin = event.origin === 'https://script.google.com' || event.origin.endsWith('.googleusercontent.com');
-      if (!googleOrigin) return;
-      const message = event.data;
-      if (!message || message.source !== expectedSource || !message.payload) return;
-      const result = message.payload;
-      if (result.requestId !== payload?.fields?.clientRequestId) return;
-      if (!result.ok) return fail(result.error || 'The submission could not be accepted.');
-      succeed(result);
-    };
-
-    const pollNativeReceipt = async () => {
-      if (!NATIVE_BILL_RECEIPT_ENABLED) return;
-      const requestId = clean(payload?.fields?.clientRequestId);
-      if (!requestId) return;
-      const receipt = await waitForNativeBillReceipt(requestId, Math.max(2500, timeoutMs - 700), 900);
-      if (!receipt?.fileStored || finished) return;
-      succeed({
-        ok: true,
-        requestId,
-        fileStored: true,
-        nativeReceiptConfirmed: true,
-        transport: 'native_bill_receipt_verifier'
-      });
-    };
-
-    window.addEventListener('message', onMessage);
-    timer = setTimeout(() => fail(timeoutMessage || 'Your upload was sent securely, but confirmation is taking longer than usual. Please do not upload it again. I’ll check it and contact you only if anything is missing.'), timeoutMs);
-    transport.submit();
-    void pollNativeReceipt();
-  });
 
   const directV3Submit = async (payload, requestId, timeoutMs = 20000) => {
     const controller = new AbortController();
@@ -566,16 +486,47 @@
     sync();
   };
 
-  const fileToBase64 = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('I could not read that file. Please choose it again.'));
-    reader.onload = () => {
-      const raw = String(reader.result || '');
-      const comma = raw.indexOf(',');
-      resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
-    };
-    reader.readAsDataURL(file);
-  });
+  const fileSha256 = async file => {
+    const digest = await window.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  };
+
+  const nativeBillFileUpload = async ({ file, submissionId, requestId, timeoutMs = 30000 }) => {
+    const contentSha256 = await fileSha256(file);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetch(NATIVE_BILL_UPLOAD_ENDPOINT, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Content-Type': file.type,
+          'Idempotency-Key': requestId,
+          'X-EWM-Submission-ID': submissionId,
+          'X-EWM-File-Name': encodeURIComponent(file.name),
+          'X-EWM-Content-SHA256': contentSha256
+        },
+        body: file,
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        const receipt = await waitForNativeBillReceipt(requestId, 5000, 700);
+        if (receipt?.fileStored) return { ok: true, fileStored: true, submissionId, recoveredFromReceipt: true };
+        throw new Error('Your details are saved, but the bill file could not be confirmed yet. Please press Upload My Bill again to retry the file.');
+      }
+      throw new Error('Your details are saved, but the bill file could not be stored. Please press Upload My Bill again to retry the file.');
+    } finally {
+      window.clearTimeout(timer);
+    }
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body?.ok !== true || body?.fileStored !== true) {
+      throw new Error(body?.message || 'Your details are saved, but the bill file could not be stored. Please press Upload My Bill again to retry the file.');
+    }
+    return body;
+  };
 
   const hardenBillUpload = () => {
     const oldForm = document.querySelector('form[data-form-type="bill_upload"]');
@@ -588,6 +539,9 @@
     const button = form.querySelector('[type="submit"]');
     const errorBox = form.querySelector('.form-error');
     const statusBox = form.querySelector('.submit-status');
+    let activeRequestId = '';
+    let activeSubmissionId = '';
+
     const showError = message => {
       if (statusBox) statusBox.textContent = '';
       if (errorBox) { errorBox.textContent = message; errorBox.style.display = 'block'; }
@@ -605,15 +559,15 @@
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
       const allowedExtension = /\.(pdf|jpe?g|png)$/i.test(file.name || '');
       if (!allowedTypes.includes(file.type) || !allowedExtension) return showError('Please use a PDF, JPG or PNG.');
+      if (file.size < 1) return showError('That file is empty. Please choose the bill again.');
       if (file.size > 5 * 1024 * 1024) return showError('That file is over 5 MB. Please use a smaller file.');
 
       if (button) button.disabled = true;
-      if (statusBox) statusBox.textContent = 'Preparing your bill securely…';
+      if (statusBox) statusBox.textContent = activeSubmissionId ? 'Retrying your bill file securely…' : 'Starting your assessment securely…';
 
       try {
         const fd = new FormData(form);
-        const requestId = makeRequestId('bill');
-        const dataBase64 = await fileToBase64(file);
+        const requestId = activeRequestId || makeRequestId('bill');
         const existingSolar = clean(fd.get('existingSolar')) || 'Not sure';
         const payload = {
           type: 'bill_upload',
@@ -645,60 +599,33 @@
             systemAge: clean(fd.get('systemAge')),
             inverter: clean(fd.get('inverter')),
             existingBattery: clean(fd.get('existingBattery'))
-          },
-          files: [{ name: file.name, mimeType: file.type, category: 'Electricity Bill', dataBase64 }]
+          }
         };
 
-        let preRegistered = false;
-        if (statusBox) statusBox.textContent = 'Starting your assessment securely…';
-        try {
-          await directV3Submit(assessmentToV3('bill_upload', payload, {
+        if (!activeSubmissionId) {
+          const registration = await directV3Submit(assessmentToV3('bill_upload', payload, {
             billUploadPending: true
           }), requestId);
-          preRegistered = true;
-        } catch (_) {
-          // Secure file storage remains available during a short native-intake outage.
-          // The verified Website Intake compatibility feed will recover the exact bill.
+          const submissionId = clean(registration?.submissionId);
+          if (!submissionId) throw new Error('Your details were saved, but the secure bill reference was not returned. Please try again.');
+          activeRequestId = requestId;
+          activeSubmissionId = submissionId;
         }
 
-        if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
-        const uploadReceipt = await verifiedIframeSubmit({
-          payload,
-          expectedSource: 'energy-with-mark-bill-upload-submit',
-          timeoutMs: 14000,
-          timeoutMessage: 'Your upload was sent securely, but confirmation is taking longer than usual. Please do not upload it again. I’ll check it and contact you only if anything is missing.'
+        if (statusBox) statusBox.textContent = 'Uploading your bill to secure storage…';
+        const uploadReceipt = await nativeBillFileUpload({
+          file,
+          submissionId: activeSubmissionId,
+          requestId: activeRequestId
         });
-        const receipt = uploadReceipt && typeof uploadReceipt === 'object' ? uploadReceipt : {};
-        const nativeReceipt = receipt.nativeReceiptConfirmed === true
-          ? receipt
-          : NATIVE_BILL_RECEIPT_ENABLED
-            ? await waitForNativeBillReceipt(requestId, 2500, 500)
-            : null;
-        const fileFolderId = clean(receipt.fileFolderId || receipt.folderId);
-        const reportedFileCount = Number(receipt.fileCount || 0);
-        const legacyFileCount = Number.isFinite(reportedFileCount) && reportedFileCount > 0 ? Math.floor(reportedFileCount) : (fileFolderId ? 1 : 0);
+        if (!uploadReceipt?.fileStored) throw new Error('Your details are saved, but the bill file could not be confirmed. Please press Upload My Bill again to retry the file.');
 
+        if (statusBox) statusBox.textContent = 'Confirming your assessment record…';
+        const nativeReceipt = await waitForNativeBillReceipt(activeRequestId, 3500, 500);
         if (!nativeReceipt?.fileStored) {
-          if (statusBox) statusBox.textContent = 'Linking your bill to your assessment…';
-          try {
-            await directV3Submit(assessmentToV3('bill_upload', payload, {
-              legacyUploadConfirmed: true,
-              legacyFileFolderId: fileFolderId,
-              legacyFileCount,
-              legacySubmissionId: clean(receipt.submissionId || receipt.id),
-              legacyUploadReceipt: {
-                ok: receipt.ok === true,
-                requestId: clean(receipt.requestId),
-                submissionId: clean(receipt.submissionId || receipt.id),
-                fileFolderId,
-                fileCount: legacyFileCount,
-                transport: 'secure_apps_script_bill_upload'
-              }
-            }), requestId);
-          } catch (_) {
-            // File receipt is already confirmed. The verified Website Intake compatibility feed
-            // will attach this exact stored file to D1 without asking the customer again.
-          }
+          // The native upload endpoint has already stored and linked the file before returning.
+          // Receipt polling is a second read-only confirmation and must not cause a duplicate upload.
+          if (statusBox) statusBox.textContent = 'Your bill is stored securely. Final confirmation is updating…';
         }
 
         if (existingSolar === 'Yes') saveExistingContext({
@@ -721,27 +648,10 @@
           receiptPanel.style.display = 'block';
           receiptPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: preRegistered ? 'v3_pre_registered' : 'legacy_reconciliation', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
+        try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: 'native_control_centre_file', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
       } catch (err) {
         const message = err instanceof Error ? err.message : 'I could not confirm that bill. Please call Mark on 0434 151 237.';
-        if (/confirmation is taking longer than usual/i.test(message)) {
-          if (statusBox) statusBox.textContent = '';
-          if (errorBox) errorBox.style.display = 'none';
-          const receiptPanel = document.getElementById('billReceiptPanel');
-          const waiting = document.getElementById('billReceiptWaiting');
-          const receiptFrame = document.getElementById('billReceiptFrame');
-          if (waiting) waiting.textContent = 'Your bill has been sent securely. You do not need to upload it again. I’ll check the receipt in the background and contact you only if anything is missing.';
-          if (receiptFrame) receiptFrame.style.display = 'none';
-          form.style.display = 'none';
-          if (button) button.disabled = true;
-          if (receiptPanel) {
-            receiptPanel.style.display = 'block';
-            receiptPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-          try { window.gtag?.('event', 'bill_upload_sent_confirmation_pending', { form_type: 'full_energy_assessment' }); } catch (_) {}
-        } else {
-          showError(message);
-        }
+        showError(message);
       }
     });
   };
