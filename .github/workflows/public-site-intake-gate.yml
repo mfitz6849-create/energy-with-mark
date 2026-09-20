@@ -45,7 +45,7 @@ jobs:
           grep -Fq "https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill" conversion-v1.js
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
-          grep -Fq "https://intake.energywithmark.com.au/api/public/website-bill-upload/v1" conversion-v1.js
+          grep -Fq "https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file" conversion-v1.js
           grep -q "nativeBillFileUpload" conversion-v1.js
           ! grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
           ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
@@ -105,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
-          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-bill-upload/v1"
+          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file"
           v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           origin="https://energywithmark.com.au"
 
@@ -204,7 +204,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
-          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-bill-upload/v1"
+          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file"
           v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
