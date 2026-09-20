@@ -1,8 +1,7 @@
 name: IndexNow URL updates
 
 on:
-  push:
-    branches: [main]
+  # Manual only in low-usage mode. Search discovery remains available through the sitemap.
   workflow_dispatch:
 
 permissions:

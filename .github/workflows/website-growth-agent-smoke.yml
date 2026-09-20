@@ -1,13 +1,7 @@
 name: Website Growth Agent Smoke Trigger
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/website-growth-agent-smoke.yml"
-      - ".github/workflows/website-growth-agent.yml"
-      - "scripts/website-growth-agent.mjs"
-      - "tests/website-growth-agent.test.mjs"
+  # Manual recovery/smoke only; do not auto-dispatch another hosted workflow on push.
   workflow_dispatch:
 
 permissions:
