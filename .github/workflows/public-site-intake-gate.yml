@@ -178,7 +178,9 @@ jobs:
           if (Number(body.operationalState.websiteIntakeRecords) < 1) throw new Error('Expected existing website intake evidence');
           if (Number(body.operationalState.websiteBillRecords) < 1) throw new Error('Expected existing website bill evidence');
           if (Number(body.operationalState.websiteBillFilesLinked) < 1) throw new Error('Expected existing website bill Drive linkage');
-          console.log('Build 61C exact deployment and bill-processing observability verified.');
+          if (Number(body.operationalState.websiteBillEvidenceRecords) < 1) throw new Error('Expected automatic website bill evidence persistence');
+          if (Number(body.operationalState.websiteBillAnalyses) < 1) throw new Error('Expected automatic website bill analysis persistence');
+          console.log('Build 61C exact deployment, recovered Drive linkage and automatic bill processing verified.');
           NODE
 
 
