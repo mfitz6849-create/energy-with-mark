@@ -22,7 +22,7 @@ function functionBody(name, nextName) {
 }
 
 test('core runtime always loads the conversion layer', () => {
-  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-bill-receipt-v3'\)/);
+  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-durable-bill-v4'\)/);
   assert.match(core, /script\[src\*="conversion-v1\.js"\]/);
   assert.match(core, /document\.body\.appendChild\(conversionScript\)/);
 });
@@ -80,13 +80,16 @@ test('bill upload pre-registers in native D1 before transferring the file and th
   assert.ok(clone >= 0, 'bill upload must replace the legacy form listeners');
   assert.ok(preRegister > clone, 'bill upload must register the customer/intake before file transfer');
   assert.ok(pendingMarker > preRegister && pendingMarker < fileReceipt, 'pre-registration must explicitly mark the file as pending');
-  assert.ok(fileReceipt > preRegister, 'file transfer must start only after native registration succeeds');
+  assert.ok(fileReceipt > preRegister, 'file transfer must start only after native registration is attempted');
   assert.ok(nativeReceipt > fileReceipt, 'bill upload may check native receipt evidence after carrier acknowledgement');
   assert.ok(enrich > fileReceipt, 'the same request id must be enriched with legacy file evidence after transfer');
-  assert.ok(receipt > enrich, 'confirmed flow must show the receipt panel only after the native record is safe');
+  assert.ok(receipt > enrich, 'confirmed flow must show the receipt panel after the evidence-link attempt');
+  assert.match(body, /File receipt is already confirmed/);
+  assert.doesNotMatch(body, /throw new Error\(\`System link could not be confirmed/);
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
   assert.match(body, /legacyUploadConfirmed: true/);
-  assert.match(body, /Your assessment could not be registered securely yet/);
+  assert.match(body, /preRegistered/);
+  assert.match(body, /direct private-Sheets reconciliation path will recover the exact bill/);
   assert.match(body, /confirmation is taking longer than usual/i);
   assert.match(body, /You do not need to upload it again/);
   assert.match(body, /bill_upload_sent_confirmation_pending/);
@@ -216,8 +219,8 @@ test('bill receipt verifier is polled without customer data and the runtime is c
   assert.match(runtime, /credentials: 'omit'/);
   assert.match(runtime, /receipt\?\.fileStored/);
   assert.match(runtime, /nativeReceiptConfirmed: true/);
-  assert.match(script, /conversion-v1\.js\?v=20260920-bill-receipt-v3/);
-  assert.match(bill, /script\.js\?v=20260920-bill-receipt-v3/);
+  assert.match(script, /conversion-v1\.js\?v=20260920-durable-bill-v4/);
+  assert.match(bill, /script\.js\?v=20260920-durable-bill-v4/);
   assert.match(bill, /Thanks — your assessment has started/);
   assert.doesNotMatch(bill, /Your bill is with Mark/);
   assert.doesNotMatch(bill, /I’ll use it as the starting point/);
