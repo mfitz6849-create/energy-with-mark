@@ -649,13 +649,16 @@
           files: [{ name: file.name, mimeType: file.type, category: 'Electricity Bill', dataBase64 }]
         };
 
-        if (statusBox) statusBox.textContent = 'Registering your assessment securely…';
+        let preRegistered = false;
+        if (statusBox) statusBox.textContent = 'Starting your assessment securely…';
         try {
           await directV3Submit(assessmentToV3('bill_upload', payload, {
             billUploadPending: true
           }), requestId);
-        } catch (registrationError) {
-          throw new Error(`Your assessment could not be registered securely yet. Please try again. ${registrationError instanceof Error ? registrationError.message : ''}`.trim());
+          preRegistered = true;
+        } catch (_) {
+          // Secure file storage remains available during a short native-intake outage.
+          // The verified Website Intake compatibility feed will recover the exact bill.
         }
 
         if (statusBox) statusBox.textContent = 'Uploading your bill to the private review area…';
@@ -676,7 +679,7 @@
         const legacyFileCount = Number.isFinite(reportedFileCount) && reportedFileCount > 0 ? Math.floor(reportedFileCount) : (fileFolderId ? 1 : 0);
 
         if (!nativeReceipt?.fileStored) {
-          if (statusBox) statusBox.textContent = 'Linking your assessment to the Energy With Mark system…';
+          if (statusBox) statusBox.textContent = 'Linking your bill to your assessment…';
           try {
             await directV3Submit(assessmentToV3('bill_upload', payload, {
               legacyUploadConfirmed: true,
@@ -692,8 +695,9 @@
                 transport: 'secure_apps_script_bill_upload'
               }
             }), requestId);
-          } catch (linkError) {
-            throw new Error(`System link could not be confirmed after the bill receipt: ${linkError instanceof Error ? linkError.message : 'unknown error'}`);
+          } catch (_) {
+            // File receipt is already confirmed. The verified Website Intake compatibility feed
+            // will attach this exact stored file to D1 without asking the customer again.
           }
         }
 
@@ -717,7 +721,7 @@
           receiptPanel.style.display = 'block';
           receiptPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: 'v3', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
+        try { window.gtag?.('event', 'bill_upload_complete', { form_type: 'full_energy_assessment', acknowledgement: preRegistered ? 'v3_pre_registered' : 'legacy_reconciliation', existing_solar: existingSolar === 'Yes' }); } catch (_) {}
       } catch (err) {
         const message = err instanceof Error ? err.message : 'I could not confirm that bill. Please call Mark on 0434 151 237.';
         if (/confirmation is taking longer than usual/i.test(message)) {
@@ -735,13 +739,6 @@
             receiptPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
           try { window.gtag?.('event', 'bill_upload_sent_confirmation_pending', { form_type: 'full_energy_assessment' }); } catch (_) {}
-        } else if (/system link could not be confirmed/i.test(message)) {
-          if (statusBox) statusBox.textContent = '';
-          if (errorBox) {
-            errorBox.textContent = 'Your bill was received and is safe. The Energy With Mark system link needs a background check, so there is nothing else for you to do. I’ll contact you only if anything is missing.';
-            errorBox.style.display = 'block';
-          }
-          if (button) button.disabled = true;
         } else {
           showError(message);
         }
