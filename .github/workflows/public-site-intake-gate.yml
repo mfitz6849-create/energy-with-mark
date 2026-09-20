@@ -160,8 +160,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          v3_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v3"
           v5_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
           expected_fingerprint="14eca8031412a29d2822dd4fbceb00f9"
+
+          v3_status="$(curl -sS --max-time 15 -o /tmp/ewm-v3-61c -w '%{http_code}' -H 'Cache-Control: no-cache' "$v3_url")"
+          echo "Google Sheets recovery prerequisite status: $v3_status"
+          cat /tmp/ewm-v3-61c || true
+          test "$v3_status" = "200" -o "$v3_status" = "202"
+          node - <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/ewm-v3-61c','utf8'));
+          if (body?.version !== 'v3') throw new Error('V3 readiness version mismatch');
+          if ((body?.activationNeeded || []).includes('google_sheets')) throw new Error('Build 61C Google Sheets OAuth prerequisite is not ready');
+          console.log('Build 61C Google Sheets OAuth prerequisite verified.');
+          NODE
+
           status="$(curl -sS --max-time 15 -o /tmp/ewm-v5-61b -w '%{http_code}' -H 'Cache-Control: no-cache' "$v5_url")"
           echo "Build 61C production proof status: $status"
           cat /tmp/ewm-v5-61b || true
