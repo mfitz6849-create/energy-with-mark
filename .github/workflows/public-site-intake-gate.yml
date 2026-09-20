@@ -194,7 +194,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url="https://intake.energywithmark.com.au/api/public/v5-readiness"
+          url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
           status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o /tmp/ewm-v5-build65 -w '%{http_code}' -H 'Cache-Control: no-cache' "$url")"
           echo "Build 65 V5 readiness status: $status"
           test "$status" = "200" -o "$status" = "202"
