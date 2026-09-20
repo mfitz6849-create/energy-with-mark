@@ -22,7 +22,7 @@ function functionBody(name, nextName) {
 }
 
 test('core runtime always loads the conversion layer', () => {
-  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-bill-receipt-v2'\)/);
+  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-bill-receipt-v3'\)/);
   assert.match(core, /script\[src\*="conversion-v1\.js"\]/);
   assert.match(core, /document\.body\.appendChild\(conversionScript\)/);
 });
@@ -210,8 +210,9 @@ test('bill receipt verifier is polled without customer data and the runtime is c
   assert.match(runtime, /credentials: 'omit'/);
   assert.match(runtime, /receipt\?\.fileStored/);
   assert.match(runtime, /nativeReceiptConfirmed: true/);
-  assert.match(script, /conversion-v1\.js\?v=20260920-bill-receipt-v2/);
-  assert.match(bill, /script\.js\?v=20260920-bill-receipt-v2/);
+  assert.match(script, /conversion-v1\.js\?v=20260920-bill-receipt-v3/);
+  assert.match(bill, /script\.js\?v=20260920-bill-receipt-v3/);
   assert.match(bill, /Thanks — your assessment has started/);
   assert.doesNotMatch(bill, /Your bill is with Mark/);
+  assert.doesNotMatch(bill, /I’ll use it as the starting point/);
 });
