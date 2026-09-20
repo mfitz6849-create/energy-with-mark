@@ -156,6 +156,32 @@ jobs:
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
 
+      - name: Verify Build 61B production fingerprint and bill-processing readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          v5_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
+          expected_fingerprint="13458e294bf80c5209e9fed23615647a"
+          status="$(curl -sS --max-time 15 -o /tmp/ewm-v5-61b -w '%{http_code}' -H 'Cache-Control: no-cache' "$v5_url")"
+          echo "Build 61B production proof status: $status"
+          cat /tmp/ewm-v5-61b || true
+          test "$status" = "200"
+          node - <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/ewm-v5-61b','utf8'));
+          const expected = '13458e294bf80c5209e9fed23615647a';
+          if (body?.version !== 'v5' || body?.ready !== true) throw new Error('V5 readiness is not ready');
+          if (body?.deployment?.commitFingerprint !== expected) throw new Error('Build 61B fingerprint mismatch');
+          for (const key of ['websiteIntakeRecords','websiteBillRecords','websiteBillFilesLinked','websiteBillEvidenceRecords','websiteBillAnalyses','websiteBillVerifiedAnalyses','websiteBillAssessmentsPrepared']) {
+            if (!Number.isFinite(Number(body?.operationalState?.[key]))) throw new Error('Missing Build 61B counter: '+key);
+          }
+          if (Number(body.operationalState.websiteIntakeRecords) < 1) throw new Error('Expected existing website intake evidence');
+          if (Number(body.operationalState.websiteBillRecords) < 1) throw new Error('Expected existing website bill evidence');
+          if (Number(body.operationalState.websiteBillFilesLinked) < 1) throw new Error('Expected existing website bill Drive linkage');
+          console.log('Build 61B exact deployment and bill-processing observability verified.');
+          NODE
+
+
       - name: Verify existing-solar assessment path remains present
         run: |
           set -euo pipefail
