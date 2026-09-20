@@ -1,6 +1,13 @@
 name: Public Site Intake Gate
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "*.html"
+      - "*.js"
+      - "tests/public-intake-runtime.test.mjs"
+      - ".github/workflows/public-site-intake-gate.yml"
   pull_request:
     branches: [main]
     paths:
