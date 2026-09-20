@@ -156,13 +156,13 @@ jobs:
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
 
-      - name: Verify Build 61D production fingerprint and bill-processing readiness
+      - name: Verify Build 61E production fingerprint and bill-processing readiness
         shell: bash
         run: |
           set -euo pipefail
           v3_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v3"
           v5_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
-          expected_fingerprint="6d42545af557a0f97d9bc6d5d05e1d6b"
+          expected_fingerprint="705edd9f84d389af5d228dc9c42dc8a7"
 
           v3_status="$(curl -sS --max-time 15 -o /tmp/ewm-v3-61c -w '%{http_code}' -H 'Cache-Control: no-cache' "$v3_url")"
           echo "Google Sheets recovery prerequisite status: $v3_status"
@@ -172,38 +172,40 @@ jobs:
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync('/tmp/ewm-v3-61c','utf8'));
           if (body?.version !== 'v3') throw new Error('V3 readiness version mismatch');
-          if ((body?.activationNeeded || []).includes('google_sheets')) throw new Error('Build 61D Google Sheets OAuth prerequisite is not ready');
-          console.log('Build 61D Google Sheets OAuth prerequisite verified.');
+          if ((body?.activationNeeded || []).includes('google_sheets')) throw new Error('Build 61E Google Sheets OAuth prerequisite is not ready');
+          console.log('Build 61E Google Sheets OAuth prerequisite verified.');
           NODE
 
           status="$(curl -sS --max-time 15 -o /tmp/ewm-v5-61b -w '%{http_code}' -H 'Cache-Control: no-cache' "$v5_url")"
-          echo "Build 61D production proof status: $status"
+          echo "Build 61E production proof status: $status"
           cat /tmp/ewm-v5-61b || true
           test "$status" = "200"
           node - <<'NODE'
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync('/tmp/ewm-v5-61b','utf8'));
-          const expected = '6d42545af557a0f97d9bc6d5d05e1d6b';
+          const expected = '705edd9f84d389af5d228dc9c42dc8a7';
           if (body?.version !== 'v5' || body?.ready !== true) throw new Error('V5 readiness is not ready');
-          if (body?.deployment?.commitFingerprint !== expected) throw new Error('Build 61D fingerprint mismatch');
+          if (body?.deployment?.commitFingerprint !== expected) throw new Error('Build 61E fingerprint mismatch');
           for (const key of [
             'websiteIntakeRecords','websiteBillRecords','websiteBillFilesLinked','websiteBillEvidenceRecords',
             'websiteBillAnalyses','websiteBillVerifiedAnalyses','websiteBillAssessmentsPrepared',
             'websiteBillLegacySubmissionIds','websiteBillNativeSubmissionIds',
             'websiteBillLegacyFeedClientIds','websiteBillNativeClientIds',
+            'websiteBillPendingReview','websiteBillPendingReviewBlankError',
+            'websiteBillPendingReviewWithError','websiteBillAutomaticEligible',
             'websiteIntakeRecoveryExamined','websiteIntakeRecoveryMatchedExisting','websiteIntakeRecoveryExceptions'
           ]) {
-            if (!Number.isFinite(Number(body?.operationalState?.[key]))) throw new Error('Missing Build 61D counter: '+key);
+            if (!Number.isFinite(Number(body?.operationalState?.[key]))) throw new Error('Missing Build 61E counter: '+key);
           }
-          if (!body?.operationalState?.websiteIntakeRecoveryStatus) throw new Error('Build 61D recovery heartbeat has not run yet');
-          if (!body?.operationalState?.websiteIntakeRecoveryLastCheckedAt) throw new Error('Build 61D recovery heartbeat timestamp is missing');
-          if (Number(body.operationalState.websiteIntakeRecoveryExamined) < 1) throw new Error('Build 61D recovery did not examine Website Intake rows');
+          if (!body?.operationalState?.websiteIntakeRecoveryStatus) throw new Error('Build 61E recovery heartbeat has not run yet');
+          if (!body?.operationalState?.websiteIntakeRecoveryLastCheckedAt) throw new Error('Build 61E recovery heartbeat timestamp is missing');
+          if (Number(body.operationalState.websiteIntakeRecoveryExamined) < 1) throw new Error('Build 61E recovery did not examine Website Intake rows');
           if (Number(body.operationalState.websiteIntakeRecords) < 1) throw new Error('Expected existing website intake evidence');
           if (Number(body.operationalState.websiteBillRecords) < 1) throw new Error('Expected existing website bill evidence');
           if (Number(body.operationalState.websiteBillFilesLinked) < 1) throw new Error('Expected existing website bill Drive linkage');
           if (Number(body.operationalState.websiteBillEvidenceRecords) < 1) throw new Error('Expected automatic website bill evidence persistence');
           if (Number(body.operationalState.websiteBillAnalyses) < 1) throw new Error('Expected automatic website bill analysis persistence');
-          console.log('Build 61D exact deployment, recovery heartbeat, recovered Drive linkage and automatic bill processing verified.');
+          console.log('Build 61E exact deployment, recovery heartbeat, recovered Drive linkage and automatic bill processing verified.');
           NODE
 
 
