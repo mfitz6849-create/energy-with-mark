@@ -89,7 +89,7 @@ test('bill upload pre-registers in native D1 before transferring the file and th
   assert.match(body, /expectedSource: 'energy-with-mark-bill-upload-submit'/);
   assert.match(body, /legacyUploadConfirmed: true/);
   assert.match(body, /preRegistered/);
-  assert.match(body, /direct private-Sheets reconciliation path will recover the exact bill/);
+  assert.match(body, /verified Website Intake compatibility feed will recover the exact bill/);
   assert.match(body, /confirmation is taking longer than usual/i);
   assert.match(body, /You do not need to upload it again/);
   assert.match(body, /bill_upload_sent_confirmation_pending/);
