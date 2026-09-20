@@ -45,8 +45,12 @@ jobs:
           grep -Fq "https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill" conversion-v1.js
           grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
-          grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
+          grep -Fq "https://intake.energywithmark.com.au/api/public/website-bill-upload/v1" conversion-v1.js
+          grep -q "nativeBillFileUpload" conversion-v1.js
+          ! grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
           ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
+          ! grep -q "script.google.com" conversion-v1.js
+          ! grep -q "script.google.com" upload-bill.html
           ! grep -q "script.google.com" book.html
           grep -q "hardenQuickLead" conversion-v1.js
           grep -q "hardenFullCalculatorLead" conversion-v1.js
@@ -101,6 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
+          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-bill-upload/v1"
           v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           origin="https://energywithmark.com.au"
 
@@ -134,6 +139,28 @@ jobs:
           grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-invalid-headers
           grep -q '"ok":false' /tmp/ewm-invalid-body
           grep -q 'Please provide your name, phone, valid email and consent' /tmp/ewm-invalid-body
+
+          bill_options_status="$(curl -sS -o /tmp/ewm-bill-file-options-body -D /tmp/ewm-bill-file-options-headers -w '%{http_code}' -X OPTIONS "$bill_file_endpoint" \
+            -H "Origin: $origin" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type,idempotency-key")"
+          echo "Native bill-file OPTIONS status: $bill_options_status"
+          test "$bill_options_status" = "204"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-bill-file-options-headers
+          grep -qi "^access-control-allow-headers:.*content-type" /tmp/ewm-bill-file-options-headers
+          grep -qi "^access-control-allow-headers:.*idempotency-key" /tmp/ewm-bill-file-options-headers
+
+          bill_invalid_status="$(curl -sS -o /tmp/ewm-bill-file-invalid-body -D /tmp/ewm-bill-file-invalid-headers -w '%{http_code}' -X POST "$bill_file_endpoint" \
+            -H "Origin: $origin" \
+            -H "Content-Type: application/json" \
+            -H "Idempotency-Key: ci-no-write-native-bill-check" \
+            --data '{}')"
+          echo "Native bill-file invalid request status: $bill_invalid_status"
+          cat /tmp/ewm-bill-file-invalid-body || true
+          test "$bill_invalid_status" = "415"
+          grep -qi "^access-control-allow-origin: $origin" /tmp/ewm-bill-file-invalid-headers
+          grep -Fq '"ok":false' /tmp/ewm-bill-file-invalid-body
+          grep -Fq 'Multipart bill upload is required' /tmp/ewm-bill-file-invalid-body
 
           receipt_request_id="ewm-bill-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           receipt_status="$(curl -sS --max-time 15 -o /tmp/ewm-bill-receipt-body -D /tmp/ewm-bill-receipt-headers -w '%{http_code}'             "$endpoint?receipt=bill&requestId=$receipt_request_id"             -H "Origin: $origin")"
@@ -177,6 +204,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
+          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-bill-upload/v1"
           v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
@@ -210,7 +238,7 @@ jobs:
             curl -fsS -H 'Cache-Control: no-cache' "$privacy_url" -o /tmp/live-privacy.html || true
             curl -fsS -H 'Cache-Control: no-cache' "$quick_url" -o /tmp/live-quick.js || true
             curl -fsS -H 'Cache-Control: no-cache' "$calculator_js_url" -o /tmp/live-calculator.js || true
-            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null \
+            if grep -Fq "$endpoint" /tmp/live-conversion.js 2>/dev/null               && grep -Fq "$bill_file_endpoint" /tmp/live-conversion.js 2>/dev/null               && ! grep -Fq "script.google.com" /tmp/live-conversion.js 2>/dev/null               && ! grep -Fq "script.google.com" /tmp/live-upload.html 2>/dev/null               && grep -Fq "$endpoint" /tmp/live-book.html 2>/dev/null               && grep -Fq "kind:'appointment_request'" /tmp/live-book.html 2>/dev/null               && grep -Fq 'name="address"' /tmp/live-book.html 2>/dev/null               && grep -Fq 'Example Energy Assessment' /tmp/live-example.html 2>/dev/null               && grep -Fq 'single-property example' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Page 1 of 3' /tmp/live-example.html 2>/dev/null               && grep -Fq 'Strong solar opportunity' /tmp/live-example.html 2>/dev/null               && grep -Fq '2. I look at what matters' /tmp/live-contact.html 2>/dev/null \
               && grep -Fq 'name="phone"' /tmp/live-contact.html 2>/dev/null \
               && grep -Fq 'name="address"' /tmp/live-contact.html 2>/dev/null \
               && grep -Fq 'href="/example-assessment.html">See an Example Assessment' /tmp/live-upload.html 2>/dev/null \
