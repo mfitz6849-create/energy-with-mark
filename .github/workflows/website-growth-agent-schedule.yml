@@ -1,12 +1,9 @@
 name: Website Growth Agent Scheduler
 
 on:
+  # Low-usage mode while hosted-runner allowance is constrained.
+  # The native Control Centre growth path is the preferred automation surface.
   workflow_dispatch:
-  schedule:
-    # 08:00 Melbourne is 21:00 UTC during AEDT and 22:00 UTC during AEST.
-    # Both UTC candidates run; the timezone gate below dispatches exactly one.
-    - cron: "0 21 * * *"
-    - cron: "0 22 * * *"
 
 permissions:
   actions: write
