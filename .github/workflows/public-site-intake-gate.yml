@@ -155,6 +155,33 @@ jobs:
           grep -Fq '"runtimeArmed":true' /tmp/ewm-v4-premerge-readiness
           grep -Fq '"attestationReady":true' /tmp/ewm-v4-premerge-readiness
 
+          visibility_v5_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v5"
+          visibility_status="$(curl -sS --max-time 15 -o /tmp/ewm-visibility-proof -w '%{http_code}' "$visibility_v5_url" || true)"
+          echo "Live visibility proof status: $visibility_status"
+          cat /tmp/ewm-visibility-proof || true
+          test "$visibility_status" = "200" -o "$visibility_status" = "202"
+          node - /tmp/ewm-visibility-proof <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = 'eb4f8c54678d20477d8ed2bdb8ac058e';
+          if (body?.deployment?.commitFingerprint !== expected) {
+            throw new Error(`Visibility hotfix fingerprint mismatch: ${body?.deployment?.commitFingerprint || 'missing'}`);
+          }
+          const state = body?.operationalState || {};
+          const intakeCount = Number(state.websiteIntakeRecords);
+          const billCount = Number(state.websiteBillRecords);
+          const latestBillAt = typeof state.latestWebsiteBillAt === 'string' ? state.latestWebsiteBillAt : '';
+          console.log(JSON.stringify({
+            commitFingerprint: body.deployment.commitFingerprint,
+            websiteIntakeRecords: intakeCount,
+            websiteBillRecords: billCount,
+            latestWebsiteBillAt: latestBillAt
+          }));
+          if (!Number.isFinite(intakeCount) || intakeCount < 1) throw new Error('Live D1 has no website intake record');
+          if (!Number.isFinite(billCount) || billCount < 1) throw new Error('Live D1 has no bill record');
+          if (!latestBillAt.startsWith('2026-09-20')) throw new Error('Latest live D1 bill is not from the current recovery date');
+          NODE
+
 
       - name: Verify existing-solar assessment path remains present
         run: |
