@@ -222,3 +222,11 @@ test('native bill file upload and receipt verifier are cache-busted and customer
   assert.match(bill, /Thanks — your assessment has started/);
   assert.doesNotMatch(bill, /Your bill is with Mark/);
 });
+
+test('B2B outreach links preserve campaign and per-prospect attribution into native intake', () => {
+  assert.match(runtime, /utmContent: params\.get\('utm_content'\)/);
+  assert.match(runtime, /outreachRef: params\.get\('ewm_ref'\)/);
+  assert.match(runtime, /utmContent: clean\(fields\.utmContent\)/);
+  assert.match(runtime, /outreachRef: clean\(fields\.outreachRef\)/);
+  assert.match(core, /conversion-v1\.js\?v=20260921-b2b-attribution-v1/);
+});
