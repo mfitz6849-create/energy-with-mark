@@ -379,7 +379,7 @@ if (breadcrumbNav) {
 // Load the site-wide conversion, consistency and profile layer after the core runtime.
 if (!document.querySelector('script[src*="conversion-v1.js"]')) {
   const conversionScript = document.createElement('script');
-  conversionScript.src = siteUrl('conversion-v1.js?v=20260920-native-bill-v5');
+  conversionScript.src = siteUrl('conversion-v1.js?v=20260921-b2b-attribution-v1');
   conversionScript.defer = true;
   document.body.appendChild(conversionScript);
 }

@@ -22,7 +22,7 @@ function functionBody(name, nextName) {
 }
 
 test('core runtime always loads the conversion layer', () => {
-  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260920-native-bill-v5'\)/);
+  assert.match(core, /conversionScript\.src\s*=\s*siteUrl\('conversion-v1\.js\?v=20260921-b2b-attribution-v1'\)/);
   assert.match(core, /script\[src\*="conversion-v1\.js"\]/);
   assert.match(core, /document\.body\.appendChild\(conversionScript\)/);
 });
@@ -215,10 +215,18 @@ test('native bill file upload and receipt verifier are cache-busted and customer
   assert.match(runtime, /credentials: 'omit'/);
   assert.doesNotMatch(runtime, /X-EWM-Submission-ID|X-EWM-Content-SHA256|X-EWM-File-Name/);
   assert.match(runtime, /receipt\?\.fileStored/);
-  assert.match(script, /conversion-v1\.js\?v=20260920-native-bill-v5/);
-  assert.match(bill, /script\.js\?v=20260920-native-bill-v5/);
+  assert.match(script, /conversion-v1\.js\?v=20260921-b2b-attribution-v1/);
+  assert.match(bill, /script\.js\?v=20260921-b2b-attribution-v1/);
   assert.doesNotMatch(runtime, /script\.google\.com/);
   assert.doesNotMatch(bill, /script\.google\.com/);
   assert.match(bill, /Thanks — your assessment has started/);
   assert.doesNotMatch(bill, /Your bill is with Mark/);
+});
+
+test('B2B outreach links preserve campaign and per-prospect attribution into native intake', () => {
+  assert.match(runtime, /utmContent: params\.get\('utm_content'\)/);
+  assert.match(runtime, /outreachRef: params\.get\('ewm_ref'\)/);
+  assert.match(runtime, /utmContent: clean\(fields\.utmContent\)/);
+  assert.match(runtime, /outreachRef: clean\(fields\.outreachRef\)/);
+  assert.match(core, /conversion-v1\.js\?v=20260921-b2b-attribution-v1/);
 });

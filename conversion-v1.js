@@ -28,7 +28,9 @@
     return {
       utmSource: params.get('utm_source') || '',
       utmMedium: params.get('utm_medium') || '',
-      utmCampaign: params.get('utm_campaign') || ''
+      utmCampaign: params.get('utm_campaign') || '',
+      utmContent: params.get('utm_content') || '',
+      outreachRef: params.get('ewm_ref') || ''
     };
   };
 
@@ -150,6 +152,8 @@
       utmSource: clean(fields.utmSource),
       utmMedium: clean(fields.utmMedium),
       utmCampaign: clean(fields.utmCampaign),
+      utmContent: clean(fields.utmContent),
+      outreachRef: clean(fields.outreachRef),
       goals: Array.isArray(fields.goals) ? fields.goals.filter(Boolean) : [],
       billingPeriod: clean(fields.billingPeriod),
       solarSize: clean(fields.solarSize),

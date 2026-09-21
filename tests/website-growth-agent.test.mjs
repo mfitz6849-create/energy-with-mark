@@ -82,7 +82,7 @@ test("sitemap updater changes only the target article date", () => {
 test("discovery audit requires explicit AI search crawler, sitemap and AI site guide", () => {
   const articlePath = "articles/how-big-should-home-battery-be.html";
   const configured = auditStaticDiscovery({
-    robots: "User-agent: OAI-SearchBot\nAllow: /\nSitemap: https://energywithmark.com.au/sitemap.xml\n",
+    robots: "User-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: *\nAllow: /\n\nSitemap: https://energywithmark.com.au/sitemap.xml\n",
     sitemap: `https://energywithmark.com.au/${articlePath}`,
     llms: "https://energywithmark.com.au/learn.html",
     articlePath,
