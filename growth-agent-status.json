@@ -1,5 +1,5 @@
 {
-  "agent": "Website Growth Agent",
+  "agent": "Website Visibility Agent",
   "active": true,
   "mode": "business-system-managed",
   "lastRunAt": "2026-09-16T23:04:00.000Z",
@@ -16,5 +16,20 @@
   "status": "published_low_risk",
   "lastAction": "Added grounded answer and FAQ enrichment to articles/why-i-need-your-electricity-bill.html.",
   "lastChangedPath": "articles/why-i-need-your-electricity-bill.html",
-  "reason": "Repository-reviewed fallback grounded in the current electricity-bill article."
+  "reason": "Repository-reviewed fallback grounded in the current electricity-bill article.",
+  "visibility": {
+    "aiSearchCrawlerAllowed": true,
+    "normalSearchCrawlerAllowed": true,
+    "sitemapDeclared": true,
+    "llmsGuidePresent": true,
+    "websiteSchemaPresent": true,
+    "personSchemaPresent": true,
+    "canonicalHomePresent": true,
+    "answerEnrichmentPresent": true,
+    "readinessPercent": 100,
+    "sitemapUrlCount": 34,
+    "knowledgeArticleCount": 18,
+    "enrichedArticleCount": 7,
+    "measurementBoundary": "Technical discoverability readiness only. Search ranking, AI citation share and traffic are not inferred without verified analytics/source evidence."
+  }
 }

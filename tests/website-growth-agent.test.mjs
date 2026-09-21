@@ -6,6 +6,7 @@ import {
   applyGrowthBlock,
   auditStaticDiscovery,
   buildGrowthPrompt,
+  buildVisibilitySnapshot,
   chooseArticle,
   groundedFallbackProposal,
   updateSitemapLastmod,
@@ -93,6 +94,23 @@ test("discovery audit requires explicit AI search crawler, sitemap and AI site g
 });
 
 
+
+
+test("visibility snapshot measures AI-search readiness without inventing ranking", () => {
+  const snapshot = buildVisibilitySnapshot({
+    robots: "User-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: *\nAllow: /\n\nSitemap: https://energywithmark.com.au/sitemap.xml\n",
+    sitemap: "<urlset><url><loc>https://energywithmark.com.au/</loc></url><url><loc>https://energywithmark.com.au/articles/example.html</loc></url></urlset>",
+    llms: "# Energy With Mark\n- Knowledge hub: https://energywithmark.com.au/learn.html",
+    indexHtml: '<link rel="canonical" href="https://energywithmark.com.au/"/><script type="application/ld+json">{"@graph":[{"@type":"Person"},{"@type":"WebSite"}]}</script>',
+    articleMap: new Map([["articles/example.html", "<!-- EWM-GROWTH:START -->"]]),
+  });
+  assert.equal(snapshot.readinessPercent, 100);
+  assert.equal(snapshot.sitemapUrlCount, 2);
+  assert.equal(snapshot.knowledgeArticleCount, 1);
+  assert.equal(snapshot.enrichedArticleCount, 1);
+  assert.match(snapshot.measurementBoundary, /Search ranking, AI citation share and traffic are not inferred/);
+});
+
 test("repository-grounded fallback is available only for reviewed matching pages", () => {
   const page = "<html><body>A recent electricity bill. The property address. Existing solar details. Future changes.</body></html>";
   const proposal = groundedFallbackProposal("articles/what-information-needed-for-solar-assessment.html", page);
@@ -110,6 +128,9 @@ test("scheduled workflow uses private Business System AI with OIDC and bounded p
     read("scripts/website-growth-agent.mjs"),
   ]);
   assert.match(workflow, /id-token: write/);
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /cron: "17 1 \* \* \*"/);
+  assert.match(workflow, /Website Visibility Agent/);
   assert.match(workflow, /https:\/\/control\.energywithmark\.com\.au\/api\/website-growth\/prepare/);
   assert.match(workflow, /--prepare-request/);
   assert.match(workflow, /ewm-growth\/run-/);
@@ -126,6 +147,9 @@ test("scheduled workflow uses private Business System AI with OIDC and bounded p
   assert.match(workflow, /pull-request channel is unavailable, so nothing was published/);
   assert.match(script, /DEFAULT_MODEL = "control-centre-workers-ai"/);
   assert.match(script, /mode: "business-system-managed"/);
+  assert.match(script, /buildVisibilitySnapshot/);
+  assert.match(script, /aiSearchCrawlerAllowed/);
+  assert.match(script, /measurementBoundary/);
   assert.match(ci, /workflow_dispatch:/);
   assert.match(ci, /Independently verify a dispatched generated article diff/);
   assert.match(autoMerge, /RUN_EVENT.*workflow_run\.event/s);

@@ -1,7 +1,9 @@
-name: Website Growth Agent
+name: Website Visibility Agent
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 1 * * *"
 
 permissions:
   contents: write
@@ -186,10 +188,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git config user.name "Energy With Mark Website Growth Agent"
+          git config user.name "Energy With Mark Website Visibility Agent"
           git config user.email "actions@users.noreply.github.com"
           git add "$ARTICLE" sitemap.xml growth-agent-status.json
-          git commit -m "Website Growth Agent: publish reviewed grounded fallback"
+          git commit -m "Website Visibility Agent: publish reviewed grounded fallback"
           git push origin HEAD:main
           gh workflow run indexnow.yml --repo "$GITHUB_REPOSITORY" --ref main
 
@@ -203,11 +205,11 @@ jobs:
         run: |
           set -euo pipefail
           branch="ewm-growth/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          git config user.name "Energy With Mark Website Growth Agent"
+          git config user.name "Energy With Mark Website Visibility Agent"
           git config user.email "actions@users.noreply.github.com"
           git switch -c "$branch"
           git add "$ARTICLE" sitemap.xml growth-agent-status.json
-          git commit -m "Website Growth Agent: grounded evergreen improvement"
+          git commit -m "Website Visibility Agent: grounded evergreen improvement"
           git push origin "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           set +e
@@ -215,7 +217,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --base main \
             --head "$branch" \
-            --title "[Website Growth Agent] Grounded evergreen improvement" \
+            --title "[Website Visibility Agent] Grounded evergreen improvement" \
             --body "Business System Website Growth run ${GITHUB_RUN_ID}. One allowlisted evergreen article only, grounded in the page's existing published content. Deterministic safety tests passed before and after generation. No financial, incentive, product, legal, customer-workflow, calculator, booking, bill-upload or lead-capture changes are permitted by this run." 2>/tmp/growth-pr-error.txt)"
           code=$?
           set -e
@@ -239,7 +241,7 @@ jobs:
         shell: bash
         run: |
           {
-            echo "### Website Growth Agent"
+            echo "### Website Visibility Agent"
             if [ "${{ steps.candidate.outputs.has_candidate }}" != "true" ]; then
               echo "No unenriched low-risk article candidate remains."
             elif [ "${{ steps.inference.outputs.publish }}" != "true" ]; then

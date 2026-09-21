@@ -143,7 +143,7 @@ export function chooseArticle(articleMap) {
 
 export function buildGrowthPrompt(articlePath, articleHtml) {
   const articleText = stripHtml(articleHtml).slice(0, 18000);
-  return `You are the Energy With Mark Website Growth Agent. Improve one existing Australian solar/battery educational page for conventional search and AI-powered search. You are not allowed to invent facts. Use ONLY the supplied page text below. Do not use outside facts even if you know them. Do not add prices, savings, payback, ROI, tariffs, rebates, grants, incentives, government-program details, product specifications, legal claims, customer-specific advice, testimonials or numeric claims. In summary, whatMatters, FAQ questions and FAQ answers, do not place any digits and do not use these words: price, cost, saving, savings, rate, tariff, feed-in, rebate, grant, incentive, government, payback or ROI. Keep language simple, useful and natural. Avoid keyword stuffing and avoid near-duplicate/location doorway content. Mark Fitzpatrick remains the human adviser and author. Do not edit files and do not use tools; return the answer only. Return JSON only with this exact shape: {"decision":"publish"|"no_change","summary":"...","whatMatters":["...","...","..."],"faq":[{"q":"...","a":"..."},{"q":"...","a":"..."}],"reason":"..."}. If the page cannot be safely improved from its own text, return decision no_change.\n\nPage path: ${articlePath}\n\nPublished page text:\n${articleText}`;
+  return `You are the Energy With Mark Website Visibility Agent. Improve one existing Australian solar/battery educational page for conventional search and AI-powered search. You are not allowed to invent facts. Use ONLY the supplied page text below. Do not use outside facts even if you know them. Do not add prices, savings, payback, ROI, tariffs, rebates, grants, incentives, government-program details, product specifications, legal claims, customer-specific advice, testimonials or numeric claims. In summary, whatMatters, FAQ questions and FAQ answers, do not place any digits and do not use these words: price, cost, saving, savings, rate, tariff, feed-in, rebate, grant, incentive, government, payback or ROI. Keep language simple, useful and natural. Avoid keyword stuffing and avoid near-duplicate/location doorway content. Mark Fitzpatrick remains the human adviser and author. Do not edit files and do not use tools; return the answer only. Return JSON only with this exact shape: {"decision":"publish"|"no_change","summary":"...","whatMatters":["...","...","..."],"faq":[{"q":"...","a":"..."},{"q":"...","a":"..."}],"reason":"..."}. If the page cannot be safely improved from its own text, return decision no_change.\n\nPage path: ${articlePath}\n\nPublished page text:\n${articleText}`;
 }
 
 export function applyGrowthBlock(html, proposal, today) {
@@ -183,10 +183,36 @@ export function updateSitemapLastmod(xml, articlePath, today) {
 export function auditStaticDiscovery({ robots, sitemap, llms, articlePath }) {
   const issues = [];
   if (!/User-agent:\s*OAI-SearchBot[\s\S]*?Allow:\s*\//i.test(robots)) issues.push("robots.txt does not explicitly allow OAI-SearchBot");
+  if (!/User-agent:\s*\*[\s\S]*?Allow:\s*\//i.test(robots)) issues.push("robots.txt does not allow normal search crawling");
   if (!robots.includes("https://energywithmark.com.au/sitemap.xml")) issues.push("robots.txt does not reference the sitemap");
   if (!sitemap.includes(`https://energywithmark.com.au/${articlePath}`)) issues.push("changed article is absent from sitemap.xml");
   if (!llms.includes("https://energywithmark.com.au/learn.html")) issues.push("llms.txt does not expose the knowledge hub");
   return issues;
+}
+
+export function buildVisibilitySnapshot({ robots, sitemap, llms, indexHtml, articleMap }) {
+  const sitemapUrls = [...String(sitemap || "").matchAll(/<loc>(https:\/\/energywithmark\.com\.au\/[^<]*)<\/loc>/g)].map((match) => match[1]);
+  const articleUrls = sitemapUrls.filter((url) => url.includes("/articles/"));
+  const enrichedArticles = [...articleMap.values()].filter((html) => html.includes(GROWTH_MARKER)).length;
+  const checks = {
+    aiSearchCrawlerAllowed: /User-agent:\s*OAI-SearchBot[\s\S]*?Allow:\s*\//i.test(robots),
+    normalSearchCrawlerAllowed: /User-agent:\s*\*[\s\S]*?Allow:\s*\//i.test(robots),
+    sitemapDeclared: String(robots || "").includes("https://energywithmark.com.au/sitemap.xml"),
+    llmsGuidePresent: String(llms || "").includes("https://energywithmark.com.au/learn.html"),
+    websiteSchemaPresent: /"@type"\s*:\s*"WebSite"/i.test(indexHtml),
+    personSchemaPresent: /"@type"\s*:\s*"Person"/i.test(indexHtml),
+    canonicalHomePresent: /<link\s+rel="canonical"\s+href="https:\/\/energywithmark\.com\.au\/"\s*\/>/i.test(indexHtml),
+    answerEnrichmentPresent: enrichedArticles > 0,
+  };
+  const passed = Object.values(checks).filter(Boolean).length;
+  return {
+    ...checks,
+    readinessPercent: Math.round((passed / Object.keys(checks).length) * 100),
+    sitemapUrlCount: sitemapUrls.length,
+    knowledgeArticleCount: articleUrls.length,
+    enrichedArticleCount: enrichedArticles,
+    measurementBoundary: "Technical discoverability readiness only. Search ranking, AI citation share and traffic are not inferred without verified analytics/source evidence.",
+  };
 }
 
 async function loadArticleMap() {
@@ -245,13 +271,21 @@ async function main() {
 
   const articleMap = await loadArticleMap();
   const articlePath = chooseArticle(articleMap);
+  const [robots, sitemap, llms, indexHtml] = await Promise.all([
+    fs.readFile(path.join(ROOT, "robots.txt"), "utf8"),
+    fs.readFile(path.join(ROOT, "sitemap.xml"), "utf8"),
+    fs.readFile(path.join(ROOT, "llms.txt"), "utf8"),
+    fs.readFile(path.join(ROOT, "index.html"), "utf8"),
+  ]);
+  const visibility = buildVisibilitySnapshot({ robots, sitemap, llms, indexHtml, articleMap });
   const baseStatus = {
-    agent: "Website Growth Agent",
+    agent: "Website Visibility Agent",
     active: true,
     mode: "business-system-managed",
     lastRunAt: now.toISOString(),
     model,
     sourceSha,
+    visibility,
     safety: {
       financialClaimsAutoPublish: false,
       incentiveClaimsAutoPublish: false,
@@ -263,7 +297,7 @@ async function main() {
   };
 
   if (!articlePath) {
-    await writeStatus({ ...baseStatus, status: "healthy_no_change", lastAction: "All current low-risk evergreen articles already contain a Website Growth Agent enrichment block.", lastChangedPath: null });
+    await writeStatus({ ...baseStatus, status: "healthy_no_change", lastAction: "All current low-risk evergreen articles already contain a Website Visibility Agent enrichment block.", lastChangedPath: null });
     if (outputFile) await fs.writeFile(outputFile, "", "utf8");
     return;
   }
@@ -297,14 +331,9 @@ async function main() {
   await fs.writeFile(path.join(ROOT, articlePath), updated, "utf8");
 
   const sitemapPath = path.join(ROOT, "sitemap.xml");
-  const sitemap = await fs.readFile(sitemapPath, "utf8");
   await fs.writeFile(sitemapPath, updateSitemapLastmod(sitemap, articlePath, today), "utf8");
 
-  const [robots, newSitemap, llms] = await Promise.all([
-    fs.readFile(path.join(ROOT, "robots.txt"), "utf8"),
-    fs.readFile(sitemapPath, "utf8"),
-    fs.readFile(path.join(ROOT, "llms.txt"), "utf8")
-  ]);
+  const newSitemap = await fs.readFile(sitemapPath, "utf8");
   const issues = auditStaticDiscovery({ robots, sitemap: newSitemap, llms, articlePath });
   if (issues.length) throw new Error(`Discovery audit failed: ${issues.join("; ")}`);
 
