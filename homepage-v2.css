@@ -336,3 +336,16 @@ body.public-v2 {
   .hero-proof { display:grid; gap:7px; }
   .public-v2 .trust-line { justify-content:flex-start; gap:7px; }
 }
+
+.ewm-clickable-start-card {
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.ewm-clickable-start-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(15,46,46,.12);
+}
+.ewm-clickable-start-card:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
