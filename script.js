@@ -383,3 +383,63 @@ if (!document.querySelector('script[src*="conversion-v1.js"]')) {
   conversionScript.defer = true;
   document.body.appendChild(conversionScript);
 }
+// Make the audience start cards behave as primary navigation choices.
+// Bind by visible title + subtitle so the whole card remains clickable even if
+// the homepage card markup is rendered by shared content rather than this file.
+(function enhanceAudienceStartCards() {
+  const choices = [
+    { title: 'HOME', subtitle: 'Residential guidance', href: 'home.html' },
+    { title: 'SMALL BUSINESS', subtitle: 'Commercial guidance', href: 'business.html' },
+    { title: 'SPORTS CLUB', subtitle: 'Sports club guidance', href: 'community.html' },
+    { title: 'OTHER', subtitle: 'Flexible start point', href: 'how-i-help.html' }
+  ];
+  const interactiveSelector = 'a,button,input,select,textarea,label,[role="button"],[role="link"]';
+
+  const bind = () => {
+    let bound = 0;
+    const labels = Array.from(document.querySelectorAll('h1,h2,h3,h4,strong,span,p'));
+    for (const choice of choices) {
+      const titleNode = labels.find(node => (node.textContent || '').trim().toUpperCase() === choice.title);
+      if (!titleNode) continue;
+      let card = titleNode.closest('article,[class*="card"],li');
+      if (!card) card = titleNode.parentElement;
+      let hops = 0;
+      while (card && card !== document.body && !(card.textContent || '').includes(choice.subtitle) && hops < 4) {
+        card = card.parentElement;
+        hops += 1;
+      }
+      if (!card || card === document.body || !(card.textContent || '').includes(choice.subtitle)) continue;
+      if (card.dataset.ewmStartCardBound === 'true') { bound += 1; continue; }
+      card.dataset.ewmStartCardBound = 'true';
+      card.dataset.ewmCardHref = choice.href;
+      card.classList.add('ewm-clickable-start-card');
+      card.setAttribute('role', 'link');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', choice.title + ': ' + choice.subtitle);
+      card.addEventListener('click', event => {
+        if (event.target.closest(interactiveSelector)) return;
+        window.location.href = siteUrl(choice.href);
+      });
+      card.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (event.target !== card) return;
+        event.preventDefault();
+        window.location.href = siteUrl(choice.href);
+      });
+      bound += 1;
+    }
+    return bound;
+  };
+
+  const start = () => {
+    if (bind() === choices.length) return;
+    const observer = new MutationObserver(() => {
+      if (bind() === choices.length) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(() => observer.disconnect(), 10000);
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
