@@ -23,6 +23,16 @@
   const text = selector => clean(document.querySelector(selector)?.textContent);
   const selectedValue = (root, name) => root?.querySelector(`input[name="${name}"]:checked`)?.value || '';
   const marketingOptIn = root => Boolean(root?.querySelector('input[name="marketingConsent"]')?.checked);
+  const loadProfileFromSelect = selector => {
+    const select = document.querySelector(selector);
+    const daytimeUsePercent = Number(select?.value);
+    if (!Number.isFinite(daytimeUsePercent)) return { loadProfileKey: '', daytimeUsePercent: '', eveningNightUsePercent: '' };
+    return {
+      loadProfileKey: select?.selectedOptions?.[0]?.dataset?.profile || '',
+      daytimeUsePercent,
+      eveningNightUsePercent: Math.max(0, 100 - daytimeUsePercent)
+    };
+  };
   const queryFields = () => {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -141,6 +151,9 @@
       helpRequested: helpWith,
       existingSolar: clean(fields.existingSolar),
       billAmount: clean(fields.billAmount),
+      loadProfileKey: clean(fields.loadProfileKey),
+      daytimeUsePercent: clean(fields.daytimeUsePercent) !== '' && Number.isFinite(Number(fields.daytimeUsePercent)) ? Number(fields.daytimeUsePercent) : undefined,
+      eveningNightUsePercent: clean(fields.eveningNightUsePercent) !== '' && Number.isFinite(Number(fields.eveningNightUsePercent)) ? Number(fields.eveningNightUsePercent) : undefined,
       notes: clean(fields.notes),
       sourcePage: clean(fields.sourcePage),
       landingPage: clean(fields.landingPage || fields.sourcePage),
@@ -170,6 +183,7 @@
   const assessmentPayload = ({
     sourcePage, customerType, postcode, address = '', helpWith, goals, billAmount, billingPeriod,
     existingSolar, solarSize = '', systemAge = '', inverter = '', name, phone, email,
+    loadProfileKey = '', daytimeUsePercent = '', eveningNightUsePercent = '',
     notes, requestId, website = '', context = {}, marketingConsentAccepted = false
   }) => ({
     type: 'assessment',
@@ -179,6 +193,7 @@
     fields: {
       name, phone, email, customerType, postcode, address,
       helpWith, goals, billAmount, billingPeriod, existingSolar, solarSize, systemAge,
+      loadProfileKey, daytimeUsePercent, eveningNightUsePercent,
       inverter, highExports: '', usagePattern: '', evStatus: '', businessName: '',
       businessType: '', startTime: '', finishTime: '', hasIntervalData: '',
       batteryInterest: '', backupImportance: '', futureNeeds: [],
@@ -295,6 +310,7 @@
       button.disabled = true;
       button.textContent = 'Confirming your result…';
       const existing = selectedValue(form, 'quickExistingSolar');
+      const quickProfile = loadProfileFromSelect('#quickDayUse');
       const requestId = makeRequestId('quick');
       const payload = assessmentPayload({
         sourcePage: '/',
@@ -308,6 +324,9 @@
         existingSolar: existing === 'yes' ? 'Yes' : 'No',
         solarSize: value('#quickExistingSize'),
         systemAge: value('#quickSystemAge'),
+        loadProfileKey: quickProfile.loadProfileKey,
+        daytimeUsePercent: quickProfile.daytimeUsePercent,
+        eveningNightUsePercent: quickProfile.eveningNightUsePercent,
         name, phone, email,
         notes: [
           'Saved from Energy With Mark 60 Second Check.',
@@ -328,7 +347,10 @@
           resultStatus: text('#quickResultStatus'),
           solarSizeResult: text('#quickSolarSize'),
           savingRangeResult: text('#quickSavingRange'),
-          displayedAnnualBill: text('#quickAnnualBill')
+          displayedAnnualBill: text('#quickAnnualBill'),
+          loadProfileKey: quickProfile.loadProfileKey,
+          daytimeUsePercent: quickProfile.daytimeUsePercent,
+          eveningNightUsePercent: quickProfile.eveningNightUsePercent
         }
       });
 
@@ -374,6 +396,7 @@
       const existing = selectedValue(form, 'existingSolar');
       const battery = selectedValue(form, 'battery');
       const goal = selectedValue(form, 'goal');
+      const fullProfile = loadProfileFromSelect('#dayUse');
       const requestId = makeRequestId('calculator');
       const help = existing === 'yes' ? 'Existing solar' : battery === 'no' ? 'Solar' : 'Solar + battery';
 
@@ -390,6 +413,9 @@
         solarSize: value('#existingSize'),
         systemAge: value('#existingSystemAge'),
         inverter: value('#existingInverter'),
+        loadProfileKey: fullProfile.loadProfileKey,
+        daytimeUsePercent: fullProfile.daytimeUsePercent,
+        eveningNightUsePercent: fullProfile.eveningNightUsePercent,
         name, phone, email,
         notes: [
           'Saved from Energy With Mark Full Calculator.',
@@ -420,7 +446,10 @@
           solarSavingResult: text('#solarSavingResult'),
           batterySavingResult: text('#batterySavingResult'),
           solarPaybackResult: text('#solarPayback'),
-          batteryPaybackResult: text('#batteryPayback')
+          batteryPaybackResult: text('#batteryPayback'),
+          loadProfileKey: fullProfile.loadProfileKey,
+          daytimeUsePercent: fullProfile.daytimeUsePercent,
+          eveningNightUsePercent: fullProfile.eveningNightUsePercent
         }
       });
 
@@ -568,12 +597,16 @@
         const fd = new FormData(form);
         const requestId = activeRequestId || makeRequestId('bill');
         const existingSolar = clean(fd.get('existingSolar')) || 'Not sure';
+        const billProfile = loadProfileFromSelect('#billLoadProfile');
         const payload = {
           type: 'bill_upload',
           fields: {
             name: clean(fd.get('name')), phone: clean(fd.get('phone')), email: clean(fd.get('email')),
             address: clean(fd.get('address')), postcode: clean(fd.get('postcode')), customerType: clean(fd.get('customerType')),
             helpWith: clean(fd.get('helpWith')), existingSolar, billAmount: clean(fd.get('billAmount')),
+            loadProfileKey: billProfile.loadProfileKey,
+            daytimeUsePercent: billProfile.daytimeUsePercent,
+            eveningNightUsePercent: billProfile.eveningNightUsePercent,
             notes: [
               clean(fd.get('notes')),
               existingSolar === 'Yes' ? `Current solar size: ${clean(fd.get('solarSize')) || 'Not known'} kW` : '',
@@ -597,7 +630,10 @@
             solarSize: clean(fd.get('solarSize')),
             systemAge: clean(fd.get('systemAge')),
             inverter: clean(fd.get('inverter')),
-            existingBattery: clean(fd.get('existingBattery'))
+            existingBattery: clean(fd.get('existingBattery')),
+            loadProfileKey: billProfile.loadProfileKey,
+            daytimeUsePercent: billProfile.daytimeUsePercent,
+            eveningNightUsePercent: billProfile.eveningNightUsePercent
           }
         };
 

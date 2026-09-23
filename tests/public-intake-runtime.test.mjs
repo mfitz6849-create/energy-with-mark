@@ -128,6 +128,23 @@ test('public intake journeys collect enough site and consent context for V3', ()
   assert.match(runtime, /leadAddress/);
 });
 
+test('quick check calculator and bill upload collect the same bounded daytime-evening load profile', () => {
+  for (const source of [homePage, calculatorPage, billPage]) {
+    assert.match(source, /80% daytime \/ 20% evening-night/);
+    assert.match(source, /50% daytime \/ 50% evening-night/);
+    assert.match(source, /20% daytime \/ 80% evening-night/);
+  }
+  assert.match(runtime, /loadProfileFromSelect/);
+  assert.match(runtime, /loadProfileKey: clean\(fields\.loadProfileKey\)/);
+  assert.match(runtime, /clean\(fields\.daytimeUsePercent\) !== ''/);
+  assert.match(runtime, /clean\(fields\.eveningNightUsePercent\) !== ''/);
+  assert.match(runtime, /loadProfileFromSelect\('#quickDayUse'\)/);
+  assert.match(runtime, /loadProfileFromSelect\('#dayUse'\)/);
+  assert.match(runtime, /loadProfileFromSelect\('#billLoadProfile'\)/);
+  assert.match(quickFallback, /loadProfileKey/);
+  assert.match(calculatorFallback, /loadProfileKey/);
+});
+
 test('public property wording is clear and the example assessment is a working destination', () => {
   assert.match(homePage, /What type of property is this\?/);
   assert.doesNotMatch(homePage, /What type of place is this\?/);

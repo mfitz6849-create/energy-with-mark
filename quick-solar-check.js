@@ -54,6 +54,16 @@
     return form.querySelector(`input[name="${name}"]:checked`)?.value || '';
   }
 
+  function loadProfile() {
+    const select = $('#quickDayUse');
+    const daytimeUsePercent = Number(select?.value) || 50;
+    return {
+      loadProfileKey: select?.selectedOptions?.[0]?.dataset?.profile || 'balanced',
+      daytimeUsePercent,
+      eveningNightUsePercent: Math.max(0, 100 - daytimeUsePercent)
+    };
+  }
+
   function stateFromPostcode(postcode) {
     const pc = Number(postcode);
     if (pc >= 800 && pc <= 999) return 'NT';
@@ -182,12 +192,13 @@
     const yieldPerDay = yieldFromState(state);
     const bill = annualBill();
     const existingSolar = selected('quickExistingSolar');
+    const profile = loadProfile();
     const fixed = d.supply * 365;
     const usage = Math.max(1000, (bill - fixed) / d.rate);
     const rawSolar = (usage * .9) / (yieldPerDay * 365);
     const solarKw = nearestSize(rawSolar, d.min, d.max);
     const generation = solarKw * yieldPerDay * 365;
-    const directSolar = Math.min(generation, usage * d.day);
+    const directSolar = Math.min(generation, usage * (profile.daytimeUsePercent / 100));
     const exports = Math.max(0, generation - directSolar);
     const imports = Math.max(0, usage - directSolar);
     const runningCost = Math.max(0, imports * d.rate + fixed - exports * .05);
@@ -206,7 +217,7 @@
       explanation = 'The quick estimate shows a smaller opportunity. A bill review can check whether the assumptions match how the property actually uses electricity.';
     }
 
-    result = { property, propertyLabel: d.label, postcode, state, annualBill: bill, usage, solarKw, savings, low, high, existingSolar, status };
+    result = { property, propertyLabel: d.label, postcode, state, annualBill: bill, usage, solarKw, savings, low, high, existingSolar, status, ...profile };
     $('#quickResultStatus').textContent = status;
     $('#quickResultText').textContent = explanation;
     $('#quickSolarSize').textContent = existingSolar === 'yes' ? 'Review first' : `${number(solarKw)} kW`;
@@ -249,6 +260,9 @@
       estimatedAnnualSavings: result.existingSolar === 'yes' ? '' : Math.round(result.savings),
       estimatedPaybackYears: 'Detailed review required',
       state: result.state,
+      loadProfileKey: result.loadProfileKey,
+      daytimeUsePercent: result.daytimeUsePercent,
+      eveningNightUsePercent: result.eveningNightUsePercent,
       appointmentRequested: 'No',
       source: 'Energy With Mark 60 Second Solar Check'
     };
@@ -265,6 +279,9 @@
       helpRequested: result.existingSolar === 'yes' ? 'Existing solar' : 'Solar',
       existingSolar: result.existingSolar === 'yes' ? 'Yes' : 'No',
       billAmount: String(Math.round(result.annualBill)),
+      loadProfileKey: result.loadProfileKey,
+      daytimeUsePercent: result.daytimeUsePercent,
+      eveningNightUsePercent: result.eveningNightUsePercent,
       goals: [lead.goal],
       billingPeriod: 'Annual',
       sourcePage: '/',
@@ -283,6 +300,9 @@
         estimatedUsageKwh: lead.estimatedUsageKwh,
         solarRecommendationKw: lead.solarRecommendationKw,
         estimatedAnnualSavings: lead.estimatedAnnualSavings,
+        loadProfileKey: result.loadProfileKey,
+        daytimeUsePercent: result.daytimeUsePercent,
+        eveningNightUsePercent: result.eveningNightUsePercent,
         displayedStatus: result.status
       }
     };
