@@ -59,6 +59,17 @@
     return form.querySelector(`input[name="${name}"]:checked`)?.value || '';
   }
 
+  function loadProfile() {
+    const select = $('#dayUse');
+    const daytimeUsePercent = Number(select?.value) || 50;
+    const option = select?.selectedOptions?.[0];
+    return {
+      loadProfileKey: option?.dataset?.profile || 'balanced',
+      daytimeUsePercent,
+      eveningNightUsePercent: Math.max(0, 100 - daytimeUsePercent)
+    };
+  }
+
   function stateFromPostcode(postcode) {
     const pc = Number(postcode);
     if (pc >= 800 && pc <= 999) return 'NT';
@@ -130,7 +141,8 @@
     const yieldPerDay = yieldFromState(state);
     const bill = annualBill();
     const fixed = d.supply * 365;
-    const dayShare = Number($('#dayUse').value) / 100 || d.day;
+    const profile = loadProfile();
+    const dayShare = profile.daytimeUsePercent / 100 || d.day;
     const usage = Math.max(1000, (bill - fixed) / d.rate);
     const existingSolar = selected('existingSolar');
     const existingSize = Number($('#existingSize').value) || 0;
@@ -139,7 +151,7 @@
     if (existingSolar === 'yes') {
       const rawBattery = existingSize > 0 ? Math.max(5, Math.min(existingSize * .9, d.batteryMax)) : 10;
       const batteryKwh = nearest(rawBattery, batterySizes, 5, d.batteryMax);
-      result = { property, state, goal, bill, usage, existingSolar, existingSize, batteryChoice, solarKw: existingSize || 0, batteryKwh, solarSaving: 0, batterySaving: 0, solarRunning: bill, batteryRunning: bill, solarCapital: 0, batteryCapital: d.batteryBase + batteryKwh * d.batteryPerKwh, solarPayback: null, batteryPayback: null, solarBenefit10: 0, batteryBenefit10: 0, reviewFirst: true };
+      result = { property, state, goal, bill, usage, existingSolar, existingSize, batteryChoice, ...profile, solarKw: existingSize || 0, batteryKwh, solarSaving: 0, batterySaving: 0, solarRunning: bill, batteryRunning: bill, solarCapital: 0, batteryCapital: d.batteryBase + batteryKwh * d.batteryPerKwh, solarPayback: null, batteryPayback: null, solarBenefit10: 0, batteryBenefit10: 0, reviewFirst: true };
       render();
       showStep(4);
       return;
@@ -174,7 +186,7 @@
     const batteryPayback = payback(totalCapital, batterySaving);
 
     result = {
-      property, state, goal, bill, usage, existingSolar, existingSize, batteryChoice, solarKw, batteryKwh,
+      property, state, goal, bill, usage, existingSolar, existingSize, batteryChoice, ...profile, solarKw, batteryKwh,
       solarSaving, batterySaving, solarRunning, batteryRunning, solarCapital, batteryCapital, totalCapital,
       solarPayback, batteryPayback,
       solarBenefit10: tenYearBenefit(solarSaving, solarCapital),
@@ -258,6 +270,9 @@
       estimatedAnnualSavings: result.reviewFirst ? '' : Math.round(result.batteryChoice === 'no' ? result.solarSaving : result.batterySaving),
       estimatedPaybackYears: result.reviewFirst ? 'Review required' : (result.batteryChoice === 'no' ? (result.solarPayback ? result.solarPayback.toFixed(1) : 'Review required') : (result.batteryPayback ? result.batteryPayback.toFixed(1) : 'Review required')),
       state: result.state,
+      loadProfileKey: result.loadProfileKey,
+      daytimeUsePercent: result.daytimeUsePercent,
+      eveningNightUsePercent: result.eveningNightUsePercent,
       systemPlan: result.reviewFirst ? 'Existing solar review' : (result.batteryChoice === 'no' ? 'Solar only' : 'Solar and battery comparison'),
       source: 'Energy With Mark Full Solar Calculator'
     };
@@ -276,6 +291,9 @@
       helpRequested: existingSolar === 'yes' ? 'Existing solar' : result.batteryChoice === 'no' ? 'Solar' : 'Solar + battery',
       existingSolar: existingSolar === 'yes' ? 'Yes' : existingSolar === 'no' ? 'No' : 'Not sure',
       billAmount: String(Math.round(result.bill)),
+      loadProfileKey: result.loadProfileKey,
+      daytimeUsePercent: result.daytimeUsePercent,
+      eveningNightUsePercent: result.eveningNightUsePercent,
       goals: [lead.goal || 'Understand whether solar or battery makes financial sense'],
       billingPeriod: billingPeriod($('#billFrequency').value),
       solarSize: $('#existingSize')?.value?.trim() || '',
@@ -298,6 +316,9 @@
         batteryRecommendationKwh: lead.batteryRecommendationKwh,
         estimatedAnnualSavings: lead.estimatedAnnualSavings,
         estimatedPaybackYears: lead.estimatedPaybackYears,
+        loadProfileKey: lead.loadProfileKey,
+        daytimeUsePercent: lead.daytimeUsePercent,
+        eveningNightUsePercent: lead.eveningNightUsePercent,
         systemPlan: lead.systemPlan
       }
     };
