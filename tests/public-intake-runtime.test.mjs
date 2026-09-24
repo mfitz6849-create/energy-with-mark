@@ -28,7 +28,7 @@ test('core runtime always loads the conversion layer', () => {
 });
 
 test('native V3 transport is CORS, idempotency and acknowledgement guarded', () => {
-  assert.match(runtime, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+  assert.match(runtime, /https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
   const body = functionBody('directV3Submit', 'assessmentToV3');
   assert.match(body, /fetch\(V3_INTAKE_ENDPOINT/);
   assert.match(body, /mode: 'cors'/);
@@ -38,7 +38,7 @@ test('native V3 transport is CORS, idempotency and acknowledgement guarded', () 
 });
 
 test('legacy Apps Script bill carrier is absent from the active public runtime', () => {
-  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?upload=bill-file'/);
+  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?upload=bill-file'/);
   assert.doesNotMatch(runtime, /LEGACY_BILL_ENDPOINT|verifiedIframeSubmit|script\.google\.com|googleusercontent\.com/);
   assert.doesNotMatch(runtime, /energy-with-mark-assessment-submit/);
   assert.doesNotMatch(billPage, /script\.google\.com/);
@@ -98,7 +98,7 @@ test('general enquiry goes directly to V3 and waits for acknowledgement', () => 
 });
 
 test('booking requests go directly to V3 and remain requested until confirmed', () => {
-  assert.match(booking, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+  assert.match(booking, /https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
   assert.match(booking, /kind:'appointment_request'/);
   assert.match(booking, /'Idempotency-Key':requestId/);
   assert.match(booking, /await submitV3\(payload,requestId\)/);
@@ -122,7 +122,7 @@ test('public intake journeys collect enough site and consent context for V3', ()
   assert.match(billPage, /name="address"[^>]*required/);
   assert.match(billPage, /name="postcode"[^>]*required/);
   assert.doesNotMatch(billPage, /Postcode[^<]*<span[^>]*>\(optional\)/i);
-  assert.match(runtime + booking, /intake\.energywithmark\.com\.au/);
+  assert.match(runtime + booking, /api\.energywithmark\.com\.au/);
   assert.match(runtime, /address: clean\(fields\.address\)/);
   assert.match(runtime, /quickAddress/);
   assert.match(runtime, /leadAddress/);
@@ -205,7 +205,7 @@ test('public example mirrors the single-property backend initial-assessment shap
 test('quick-check and calculator fallbacks cannot escape native V3 intake', () => {
   assert.match(runtime, /button\.dataset\.ewmV3Hardened = 'true'/);
   for (const source of [quickFallback, calculatorFallback]) {
-    assert.match(source, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+    assert.match(source, /https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
     assert.match(source, /mode: 'cors'/);
     assert.match(source, /'Idempotency-Key': requestId/);
     assert.match(source, /dataset\.ewmV3Hardened === 'true'/);
@@ -221,8 +221,8 @@ test('quick-check and calculator fallbacks cannot escape native V3 intake', () =
 test('native bill file upload and receipt verifier are cache-busted and customer-safe', async () => {
   const script = readFileSync(new URL('../script.js', import.meta.url), 'utf8');
   const bill = readFileSync(new URL('../upload-bill.html', import.meta.url), 'utf8');
-  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?upload=bill-file'/);
-  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
+  assert.match(runtime, /NATIVE_BILL_UPLOAD_ENDPOINT = 'https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?upload=bill-file'/);
+  assert.match(runtime, /BILL_RECEIPT_ENDPOINT = 'https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1\?receipt=bill'/);
   assert.match(runtime, /const upload = new FormData\(\)/);
   assert.match(runtime, /upload\.append\('requestId', requestId\)/);
   assert.match(runtime, /upload\.append\('submissionId', submissionId\)/);
