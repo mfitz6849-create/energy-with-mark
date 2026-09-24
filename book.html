@@ -10,7 +10,7 @@
 <script src="script.js"></script>
 <script>
 (() => {
-  const ENDPOINT='https://intake.energywithmark.com.au/api/public/website-intake/v1';
+  const ENDPOINT='https://api.energywithmark.com.au/api/public/website-intake/v1';
   const MARKETING_CONSENT_VERSION='2026-09-19-v1';
   const form=document.querySelector('form[data-form-type="booking"]'); if(!form)return;
   const button=form.querySelector('[type="submit"]'), errorBox=form.querySelector('.form-error'), status=form.querySelector('.submit-status'), success=form.querySelector('.success');

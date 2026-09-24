@@ -48,11 +48,11 @@ jobs:
       - name: Verify V3 acknowledgement contracts remain present
         run: |
           set -euo pipefail
-          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
-          grep -Fq "https://intake.energywithmark.com.au/api/public/website-intake/v1?receipt=bill" conversion-v1.js
-          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" book.html
+          grep -q "https://api.energywithmark.com.au/api/public/website-intake/v1" conversion-v1.js
+          grep -Fq "https://api.energywithmark.com.au/api/public/website-intake/v1?receipt=bill" conversion-v1.js
+          grep -q "https://api.energywithmark.com.au/api/public/website-intake/v1" book.html
           grep -q "directV3Submit" conversion-v1.js
-          grep -Fq "https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file" conversion-v1.js
+          grep -Fq "https://api.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file" conversion-v1.js
           grep -q "nativeBillFileUpload" conversion-v1.js
           ! grep -q "energy-with-mark-bill-upload-submit" conversion-v1.js
           ! grep -q "energy-with-mark-assessment-submit" conversion-v1.js
@@ -63,8 +63,8 @@ jobs:
           grep -q "hardenFullCalculatorLead" conversion-v1.js
           grep -q "hardenBillUpload" conversion-v1.js
           grep -q "hardenGeneralEnquiry" conversion-v1.js
-          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" quick-solar-check.js
-          grep -q "https://intake.energywithmark.com.au/api/public/website-intake/v1" calculator-v2.js
+          grep -q "https://api.energywithmark.com.au/api/public/website-intake/v1" quick-solar-check.js
+          grep -q "https://api.energywithmark.com.au/api/public/website-intake/v1" calculator-v2.js
           grep -q "ewmV3Hardened" conversion-v1.js
           grep -q "ewmV3Hardened" quick-solar-check.js
           grep -q "ewmV3Hardened" calculator-v2.js
@@ -111,12 +111,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
-          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file"
-          v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
+          endpoint="https://api.energywithmark.com.au/api/public/website-intake/v1"
+          bill_file_endpoint="https://api.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file"
+          v4_readiness_url="https://api.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           origin="https://energywithmark.com.au"
 
-          root_status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 -o /tmp/ewm-root-body -D /tmp/ewm-root-headers -w '%{http_code}' "https://intake.energywithmark.com.au/")"
+          root_status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 -o /tmp/ewm-root-body -D /tmp/ewm-root-headers -w '%{http_code}' "https://api.energywithmark.com.au/")"
           echo "Intake hostname root status: $root_status"
           sed -n '1,20p' /tmp/ewm-root-headers
           cat /tmp/ewm-root-body || true
@@ -210,9 +210,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1"
-          bill_file_endpoint="https://intake.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file"
-          v4_readiness_url="https://intake.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
+          endpoint="https://api.energywithmark.com.au/api/public/website-intake/v1"
+          bill_file_endpoint="https://api.energywithmark.com.au/api/public/website-intake/v1?upload=bill-file"
+          v4_readiness_url="https://api.energywithmark.com.au/api/public/website-intake/v1?readiness=v4"
           conversion_url="https://energywithmark.com.au/conversion-v1.js?deploy=$GITHUB_SHA"
           booking_url="https://energywithmark.com.au/book.html?deploy=$GITHUB_SHA"
           example_url="https://energywithmark.com.au/example-assessment.html?deploy=$GITHUB_SHA"

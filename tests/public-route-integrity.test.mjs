@@ -130,7 +130,7 @@ test("public customer forms and calculators keep the canonical native intake", a
     readFile(path.join(root, "calculator-v2.js"), "utf8"),
   ]);
   const joined = scripts.join("\n");
-  assert.match(joined, /https:\/\/intake\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
+  assert.match(joined, /https:\/\/api\.energywithmark\.com\.au\/api\/public\/website-intake\/v1/);
 
   const bill = await readFile(path.join(root, "upload-bill.html"), "utf8");
   const book = await readFile(path.join(root, "book.html"), "utf8");
