@@ -238,59 +238,6 @@ export function applyGrowthBlock(html, proposal, today) {
   return updated;
 }
 
-export function updateSitemapLastmod") + "[\\s\\S]*?" + GROWTH_END_MARKER.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\export function applyGrowthBlock(html, proposal, today) {
-  const quickAnswerStart = html.indexOf('class="quick-answer"');
-  const quickAnswerClose = quickAnswerStart >= 0 ? html.indexOf("</div>", quickAnswerStart) : -1;
-  if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
-  const insertionPoint = quickAnswerClose + "</div>".length;
-  const matters = proposal.whatMatters.map((item) => `<li>${htmlEscape(item)}</li>`).join("");
-  const faqVisible = proposal.faq.map((item) => `<h3>${htmlEscape(item.q)}</h3><p>${htmlEscape(item.a)}</p>`).join("");
-  const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div><!-- EWM-GROWTH:END -->`;
-
-  let updated = html.slice(0, insertionPoint) + visibleBlock + html.slice(insertionPoint);
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: proposal.faq.map((item) => ({
-      "@type": "Question",
-      name: item.q,
-      acceptedAnswer: { "@type": "Answer", text: item.a }
-    }))
-  };
-  const schemaScript = `<script id="ewm-growth-faq-schema" type="application/ld+json">${JSON.stringify(faqSchema)}</script>`;
-  updated = updated.replace("</head>", `${schemaScript}</head>`);
-  updated = updated.replace(/(<meta content=")[^"]+(" property="article:modified_time"\/>)/i, `$1${today}$2`);
-  updated = updated.replace(/("dateModified":")[^"]+("?)/i, `$1${today}$2`);
-  return updated;
-}
-
-export function updateSitemapLastmod"), "g"), "")
-    .replace(/<script id="ewm-growth-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/g, "");
-  const quickAnswerStart = base.indexOf('class="quick-answer"');
-  const quickAnswerClose = quickAnswerStart >= 0 ? base.indexOf("</div>", quickAnswerStart) : -1;
-  if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
-  const insertionPoint = quickAnswerClose + "</div>".length;
-  const matters = proposal.whatMatters.map((item) => `<li>${htmlEscape(item)}</li>`).join("");
-  const faqVisible = proposal.faq.map((item) => `<h3>${htmlEscape(item.q)}</h3><p>${htmlEscape(item.a)}</p>`).join("");
-  const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div>${GROWTH_END_MARKER}`;
-
-  let updated = base.slice(0, insertionPoint) + visibleBlock + base.slice(insertionPoint);
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: proposal.faq.map((item) => ({
-      "@type": "Question",
-      name: item.q,
-      acceptedAnswer: { "@type": "Answer", text: item.a }
-    }))
-  };
-  const schemaScript = `<script id="ewm-growth-faq-schema" type="application/ld+json">${JSON.stringify(faqSchema)}</script>`;
-  updated = updated.replace("</head>", `${schemaScript}</head>`);
-  updated = updated.replace(/(<meta content=")[^"]+(" property="article:modified_time"\/>)/i, `$1${today}$2`);
-  updated = updated.replace(/("dateModified":")[^"]+("?)/i, `$1${today}$2`);
-  return updated;
-}
-
 export function updateSitemapLastmod(xml, articlePath, today) {
   const url = `https://energywithmark.com.au/${articlePath}`;
   const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
