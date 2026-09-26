@@ -64,7 +64,7 @@ jobs:
       - name: Record successful whole-site check
         shell: bash
         env:
-          CHECKIN_ENDPOINT: https://intake.energywithmark.com.au/api/website-growth/checkin
+          CHECKIN_ENDPOINT: https://energy-with-mark-website-visibility-machine.energywithmark-admin.workers.dev/api/website-growth/checkin
         run: |
           set -euo pipefail
           token="$(cat /tmp/oidc-token.txt)"
@@ -76,7 +76,7 @@ jobs:
         if: steps.candidate.outputs.has_candidate == 'true'
         shell: bash
         env:
-          GROWTH_ENDPOINT: https://intake.energywithmark.com.au/api/website-growth/prepare
+          GROWTH_ENDPOINT: https://energy-with-mark-website-visibility-machine.energywithmark-admin.workers.dev/api/website-growth/prepare
         run: |
           set -euo pipefail
           token="$(cat /tmp/oidc-token.txt)"
@@ -191,7 +191,7 @@ jobs:
         if: steps.inference.outputs.publish == 'true' && steps.pr.outputs.pr_url != ''
         shell: bash
         env:
-          CHECKIN_ENDPOINT: https://intake.energywithmark.com.au/api/website-growth/checkin
+          CHECKIN_ENDPOINT: https://energy-with-mark-website-visibility-machine.energywithmark-admin.workers.dev/api/website-growth/checkin
           ARTICLE: ${{ steps.diff.outputs.article }}
           RESULTING_REVISION: ${{ steps.pr.outputs.commit_sha }}
         run: |
