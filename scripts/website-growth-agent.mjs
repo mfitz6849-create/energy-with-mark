@@ -4,17 +4,16 @@ import { pathToFileURL } from "node:url";
 
 const ROOT = process.cwd();
 const DEFAULT_MODEL = "control-centre-workers-ai";
-const SAFE_ARTICLES = [
-  "articles/how-big-should-home-battery-be.html",
-  "articles/do-i-need-hybrid-inverter-for-battery.html",
-  "articles/does-battery-mean-whole-home-backup.html",
-  "articles/how-ev-changes-solar-sizing.html",
-  "articles/what-information-needed-for-solar-assessment.html",
-  "articles/what-is-solar-self-consumption.html",
-  "articles/why-i-need-your-electricity-bill.html"
-];
+const REVIEW_DAYS = 45;
+const RECENT_IMPROVEMENT_DAYS = 30;
+const PROTECTED_ROOT_PAGES = new Set([
+  "assessment.html", "book.html", "calculator.html", "contact.html", "privacy.html",
+  "service-relationship.html", "upload-ack.html", "upload-bill.html"
+]);
 const BLOCKED_CLAIM_PATTERN = /(?:\$|%|\brebate\b|\bgrant\b|\bincentive\b|\bgovernment\b|\bpayback\b|\bROI\b|\bprice\b|\bcost\b|\bsaving(?:s)?\b|\btariff\b|\bfeed-in\b|\brate\b)/i;
 const GROWTH_MARKER = "<!-- EWM-GROWTH:START -->";
+const GROWTH_END_MARKER = "<!-- EWM-GROWTH:END -->";
+const SOURCE_CURRENT_INFORMATION_PATTERN = /(?:\$|%|\brebate\b|\bgrant\b|\bincentive\b|\bgovernment\s+program\b|\bpayback\b|\bROI\b|\bprice\b|\bcost\b|\bsaving(?:s)?\b|\btariff\b|\bfeed-in\b|\bnetwork\s+rule\b|\bwarranty\b|\bspecification\b|\bavailability\b)/i;
 
 export function htmlEscape(value) {
   return String(value ?? "")
@@ -133,12 +132,71 @@ export function groundedFallbackProposal(articlePath, articleHtml) {
   return validation.ok ? structuredClone(fallback.proposal) : null;
 }
 
-export function chooseArticle(articleMap) {
-  for (const articlePath of SAFE_ARTICLES) {
-    const html = articleMap.get(articlePath);
-    if (html && !html.includes(GROWTH_MARKER)) return articlePath;
+function isoDaysAgo(value, now = new Date()) {
+  const parsed = Date.parse(value || "");
+  return Number.isFinite(parsed) ? Math.floor((now.getTime() - parsed) / 86400000) : Number.POSITIVE_INFINITY;
+}
+
+export function extractSitemapEntries(xml) {
+  const entries = new Map();
+  const re = /<url><loc>https:\/\/energywithmark\.com\.au\/([^<]*)<\/loc>(?:<lastmod>([^<]+)<\/lastmod>)?<\/url>/g;
+  for (const match of String(xml || "").matchAll(re)) {
+    const raw = match[1] || "";
+    const localPath = raw === "" ? "index.html" : raw.replace(/^\//, "");
+    entries.set(localPath, match[2] || "");
   }
-  return null;
+  return entries;
+}
+
+export function buildWebsiteInventory({ pageMap, sitemap, now = new Date() }) {
+  const sitemapEntries = extractSitemapEntries(sitemap);
+  const paths = new Set([...sitemapEntries.keys(), ...[...pageMap.keys()].filter((p) => p.startsWith("articles/"))]);
+  for (const root of pageMap.keys()) {
+    if (!root.includes("/") && root.endsWith(".html") && !["404.html", "upload-ack.html"].includes(root)) paths.add(root);
+  }
+  return [...paths].sort().map((pagePath) => {
+    const html = pageMap.get(pagePath) || "";
+    const pageText = stripHtml(html);
+    const inSitemap = sitemapEntries.has(pagePath);
+    const lastModified = sitemapEntries.get(pagePath) || "";
+    const pageClass = pagePath.startsWith("articles/")
+      ? "article"
+      : PROTECTED_ROOT_PAGES.has(pagePath) ? "protected_workflow" : "public_page";
+    const currentInformationRequired = SOURCE_CURRENT_INFORMATION_PATTERN.test(pageText);
+    const riskClass = pageClass === "protected_workflow"
+      ? "protected"
+      : currentInformationRequired ? "current_information" : "low";
+    const autoEligible = pageClass === "article" && riskClass === "low" && inSitemap && html.includes('class="quick-answer"');
+    let status = "Healthy";
+    let reason = "Monitored; no bounded improvement is currently due.";
+    if (!html) {
+      status = "Technical issue";
+      reason = "Sitemap entry has no matching local HTML source.";
+    } else if (!inSitemap) {
+      status = "Technical issue";
+      reason = "Public article exists but is missing from sitemap.xml.";
+    } else if (currentInformationRequired) {
+      status = "Current information verification required";
+      reason = "Time-sensitive or higher-risk claim language requires current evidence before automatic rewriting.";
+    } else if (autoEligible && !html.includes(GROWTH_MARKER)) {
+      status = "Improvement opportunity";
+      reason = "Low-risk educational article has not yet received the bounded answer/FAQ enhancement.";
+    } else if (autoEligible && isoDaysAgo(lastModified, now) >= REVIEW_DAYS) {
+      status = "Review due";
+      reason = "Previously improved low-risk content has reached its deeper-review cadence.";
+    }
+    return { path: pagePath, status, pageClass, riskClass, autoEligible, lastModified, reason };
+  });
+}
+
+export function chooseArticle(articleMap, inventory = []) {
+  const queue = inventory.filter((item) => item.autoEligible && ["Improvement opportunity", "Review due"].includes(item.status));
+  queue.sort((a, b) => {
+    const priority = (v) => v.status === "Improvement opportunity" ? 0 : 1;
+    return priority(a) - priority(b) || a.path.localeCompare(b.path);
+  });
+  const selected = queue.find((item) => articleMap.has(item.path));
+  return selected?.path || null;
 }
 
 export function buildGrowthPrompt(articlePath, articleHtml) {
@@ -147,6 +205,8 @@ export function buildGrowthPrompt(articlePath, articleHtml) {
 }
 
 export function applyGrowthBlock(html, proposal, today) {
+  let base = html
+    .replace(new RegExp(GROWTH_MARKER.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\export function applyGrowthBlock(html, proposal, today) {
   const quickAnswerStart = html.indexOf('class="quick-answer"');
   const quickAnswerClose = quickAnswerStart >= 0 ? html.indexOf("</div>", quickAnswerStart) : -1;
   if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
@@ -156,6 +216,59 @@ export function applyGrowthBlock(html, proposal, today) {
   const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div><!-- EWM-GROWTH:END -->`;
 
   let updated = html.slice(0, insertionPoint) + visibleBlock + html.slice(insertionPoint);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: proposal.faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a }
+    }))
+  };
+  const schemaScript = `<script id="ewm-growth-faq-schema" type="application/ld+json">${JSON.stringify(faqSchema)}</script>`;
+  updated = updated.replace("</head>", `${schemaScript}</head>`);
+  updated = updated.replace(/(<meta content=")[^"]+(" property="article:modified_time"\/>)/i, `$1${today}$2`);
+  updated = updated.replace(/("dateModified":")[^"]+("?)/i, `$1${today}$2`);
+  return updated;
+}
+
+export function updateSitemapLastmod") + "[\\s\\S]*?" + GROWTH_END_MARKER.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\export function applyGrowthBlock(html, proposal, today) {
+  const quickAnswerStart = html.indexOf('class="quick-answer"');
+  const quickAnswerClose = quickAnswerStart >= 0 ? html.indexOf("</div>", quickAnswerStart) : -1;
+  if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
+  const insertionPoint = quickAnswerClose + "</div>".length;
+  const matters = proposal.whatMatters.map((item) => `<li>${htmlEscape(item)}</li>`).join("");
+  const faqVisible = proposal.faq.map((item) => `<h3>${htmlEscape(item.q)}</h3><p>${htmlEscape(item.a)}</p>`).join("");
+  const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div><!-- EWM-GROWTH:END -->`;
+
+  let updated = html.slice(0, insertionPoint) + visibleBlock + html.slice(insertionPoint);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: proposal.faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a }
+    }))
+  };
+  const schemaScript = `<script id="ewm-growth-faq-schema" type="application/ld+json">${JSON.stringify(faqSchema)}</script>`;
+  updated = updated.replace("</head>", `${schemaScript}</head>`);
+  updated = updated.replace(/(<meta content=")[^"]+(" property="article:modified_time"\/>)/i, `$1${today}$2`);
+  updated = updated.replace(/("dateModified":")[^"]+("?)/i, `$1${today}$2`);
+  return updated;
+}
+
+export function updateSitemapLastmod"), "g"), "")
+    .replace(/<script id="ewm-growth-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/g, "");
+  const quickAnswerStart = base.indexOf('class="quick-answer"');
+  const quickAnswerClose = quickAnswerStart >= 0 ? base.indexOf("</div>", quickAnswerStart) : -1;
+  if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
+  const insertionPoint = quickAnswerClose + "</div>".length;
+  const matters = proposal.whatMatters.map((item) => `<li>${htmlEscape(item)}</li>`).join("");
+  const faqVisible = proposal.faq.map((item) => `<h3>${htmlEscape(item.q)}</h3><p>${htmlEscape(item.a)}</p>`).join("");
+  const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div>${GROWTH_END_MARKER}`;
+
+  let updated = base.slice(0, insertionPoint) + visibleBlock + base.slice(insertionPoint);
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -215,45 +328,120 @@ export function buildVisibilitySnapshot({ robots, sitemap, llms, indexHtml, arti
   };
 }
 
-async function loadArticleMap() {
-  const articleMap = new Map();
-  for (const articlePath of SAFE_ARTICLES) {
-    try {
-      articleMap.set(articlePath, await fs.readFile(path.join(ROOT, articlePath), "utf8"));
-    } catch {
-      // Candidate may be absent in a future site revision; skip it safely.
-    }
+async function loadPageMap() {
+  const pageMap = new Map();
+  const rootFiles = (await fs.readdir(ROOT)).filter((name) => name.endsWith(".html"));
+  const articleDir = path.join(ROOT, "articles");
+  const articleFiles = (await fs.readdir(articleDir)).filter((name) => name.endsWith(".html"));
+  for (const file of rootFiles) pageMap.set(file, await fs.readFile(path.join(ROOT, file), "utf8"));
+  for (const file of articleFiles) {
+    const relative = "articles/" + file;
+    pageMap.set(relative, await fs.readFile(path.join(ROOT, relative), "utf8"));
   }
-  return articleMap;
+  return pageMap;
+}
+
+async function loadSiteState(now = new Date()) {
+  const [pageMap, sitemap, robots, llms, indexHtml] = await Promise.all([
+    loadPageMap(),
+    fs.readFile(path.join(ROOT, "sitemap.xml"), "utf8"),
+    fs.readFile(path.join(ROOT, "robots.txt"), "utf8"),
+    fs.readFile(path.join(ROOT, "llms.txt"), "utf8"),
+    fs.readFile(path.join(ROOT, "index.html"), "utf8"),
+  ]);
+  const articleMap = new Map([...pageMap.entries()].filter(([key]) => key.startsWith("articles/")));
+  const inventory = buildWebsiteInventory({ pageMap, sitemap, now });
+  const visibility = buildVisibilitySnapshot({ robots, sitemap, llms, indexHtml, articleMap });
+  return { pageMap, articleMap, inventory, sitemap, robots, llms, indexHtml, visibility };
+}
+
+async function readExistingStatus() {
+  try {
+    return JSON.parse(await fs.readFile(path.join(ROOT, "growth-agent-status.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function inventorySummary(inventory, visibility, now = new Date()) {
+  const recentlyImproved = inventory.filter((item) => item.pageClass === "article" && item.lastModified && isoDaysAgo(item.lastModified, now) <= RECENT_IMPROVEMENT_DAYS).length;
+  const queuedForImprovement = inventory.filter((item) => ["Improvement opportunity", "Review due"].includes(item.status)).length;
+  const currentInformationChecks = inventory.filter((item) => item.status === "Current information verification required").length;
+  const technicalIssues = inventory.filter((item) => item.status === "Technical issue").length;
+  return {
+    pagesMonitored: inventory.length,
+    knowledgeArticles: inventory.filter((item) => item.pageClass === "article").length,
+    recentlyImproved,
+    queuedForImprovement,
+    currentInformationChecks,
+    needsMark: 0,
+    technicalIssues,
+    technicalReadinessPercent: visibility.readinessPercent,
+  };
+}
+
+async function prepareCheckin(outputPath) {
+  const now = new Date();
+  const state = await loadSiteState(now);
+  const existing = await readExistingStatus();
+  const candidatePath = chooseArticle(state.articleMap, state.inventory);
+  const summary = inventorySummary(state.inventory, state.visibility, now);
+  const sourceSha = process.env.GITHUB_SHA || "";
+  if (!/^[0-9a-f]{40}$/i.test(sourceSha)) throw new Error("GITHUB_SHA is required to prepare a trusted Website Visibility check-in.");
+  const runId = process.env.GITHUB_RUN_ID || "local";
+  const attempt = process.env.GITHUB_RUN_ATTEMPT || "1";
+  const payload = {
+    runKey: "github-website-visibility:" + runId + ":" + attempt,
+    sourceSha,
+    checkedAt: now.toISOString(),
+    state: summary.technicalIssues ? "technical_issue" : candidatePath ? "improvement_queued" : "healthy_no_change",
+    candidatePath: candidatePath || "",
+    lastImprovementAt: existing.lastImprovementAt || existing.lastRunAt || null,
+    ...summary,
+    inventory: state.inventory,
+    detail: candidatePath
+      ? "Whole-site inventory checked; one bounded low-risk article is queued for guarded improvement."
+      : "Whole-site inventory checked successfully; no bounded low-risk article currently requires a visible change."
+  };
+  await fs.writeFile(outputPath, JSON.stringify(payload) + "\n", "utf8");
 }
 
 async function preparePrompt(outputPath) {
-  const articleMap = await loadArticleMap();
-  const articlePath = chooseArticle(articleMap);
+  const state = await loadSiteState();
+  const articlePath = chooseArticle(state.articleMap, state.inventory);
   if (!articlePath) {
     await fs.writeFile(outputPath, "", "utf8");
     return;
   }
-  await fs.writeFile(outputPath, buildGrowthPrompt(articlePath, articleMap.get(articlePath)), "utf8");
+  await fs.writeFile(outputPath, buildGrowthPrompt(articlePath, state.articleMap.get(articlePath)), "utf8");
 }
 
 async function prepareRequest(outputPath) {
-  const articleMap = await loadArticleMap();
-  const articlePath = chooseArticle(articleMap);
+  const state = await loadSiteState();
+  const articlePath = chooseArticle(state.articleMap, state.inventory);
   if (!articlePath) {
     await fs.writeFile(outputPath, "", "utf8");
     return;
   }
   const sourceSha = process.env.GITHUB_SHA || "";
   if (!/^[0-9a-f]{40}$/i.test(sourceSha)) throw new Error("GITHUB_SHA is required to prepare a trusted Website Growth request.");
-  const pageText = stripHtml(articleMap.get(articlePath)).slice(0, 18000);
-  await fs.writeFile(outputPath, JSON.stringify({ pagePath: articlePath, pageText, sourceSha }) + "\n", "utf8");
+  const selected = state.inventory.find((item) => item.path === articlePath);
+  if (!selected || selected.riskClass !== "low" || !selected.autoEligible) throw new Error("Selected Website Visibility candidate is not low risk.");
+  const pageText = stripHtml(state.articleMap.get(articlePath)).slice(0, 18000);
+  await fs.writeFile(outputPath, JSON.stringify({
+    pagePath: articlePath,
+    pageText,
+    sourceSha,
+    pageClass: selected.pageClass,
+    riskClass: selected.riskClass,
+    reviewReason: selected.reason,
+  }) + "\n", "utf8");
 }
 
 async function prepareFallback(outputPath) {
-  const articleMap = await loadArticleMap();
-  const articlePath = chooseArticle(articleMap);
-  const proposal = articlePath ? groundedFallbackProposal(articlePath, articleMap.get(articlePath)) : null;
+  const state = await loadSiteState();
+  const articlePath = chooseArticle(state.articleMap, state.inventory);
+  const proposal = articlePath ? groundedFallbackProposal(articlePath, state.articleMap.get(articlePath)) : null;
   await fs.writeFile(outputPath, proposal ? JSON.stringify(proposal) + "\n" : "", "utf8");
 }
 
@@ -269,20 +457,20 @@ async function main() {
   const sourceSha = process.env.GITHUB_SHA || null;
   const outputFile = process.env.EWM_GROWTH_OUTPUT_FILE || null;
 
-  const articleMap = await loadArticleMap();
-  const articlePath = chooseArticle(articleMap);
-  const [robots, sitemap, llms, indexHtml] = await Promise.all([
-    fs.readFile(path.join(ROOT, "robots.txt"), "utf8"),
-    fs.readFile(path.join(ROOT, "sitemap.xml"), "utf8"),
-    fs.readFile(path.join(ROOT, "llms.txt"), "utf8"),
-    fs.readFile(path.join(ROOT, "index.html"), "utf8"),
-  ]);
-  const visibility = buildVisibilitySnapshot({ robots, sitemap, llms, indexHtml, articleMap });
+  const site = await loadSiteState(now);
+  const { articleMap, inventory, sitemap, robots, llms, visibility } = site;
+  const articlePath = chooseArticle(articleMap, inventory);
+  const previousStatus = await readExistingStatus();
+  const summary = inventorySummary(inventory, visibility, now);
   const baseStatus = {
     agent: "Website Visibility Agent",
     active: true,
     mode: "business-system-managed",
     lastRunAt: now.toISOString(),
+    lastCheckedAt: now.toISOString(),
+    lastImprovementAt: previousStatus.lastImprovementAt || previousStatus.lastRunAt || null,
+    lastRunState: summary.technicalIssues ? "technical_issue" : articlePath ? "improvement_queued" : "healthy_no_change",
+    queue: summary,
     model,
     sourceSha,
     visibility,
@@ -297,7 +485,7 @@ async function main() {
   };
 
   if (!articlePath) {
-    await writeStatus({ ...baseStatus, status: "healthy_no_change", lastAction: "All current low-risk evergreen articles already contain a Website Visibility Agent enrichment block.", lastChangedPath: null });
+    await writeStatus({ ...baseStatus, status: "healthy_no_change", lastRunState: "healthy_no_change", lastAction: "Whole-site review completed successfully; no bounded low-risk page currently needs a visible change.", lastChangedPath: null });
     if (outputFile) await fs.writeFile(outputFile, "", "utf8");
     return;
   }
@@ -340,7 +528,9 @@ async function main() {
   await writeStatus({
     ...baseStatus,
     status: "published_low_risk",
-    lastAction: `Added grounded answer and FAQ enrichment to ${articlePath}.`,
+    lastRunState: "published_low_risk",
+    lastImprovementAt: now.toISOString(),
+    lastAction: `Added or refreshed grounded answer and FAQ enrichment on ${articlePath}.`,
     lastChangedPath: articlePath,
     reason: String(proposal.reason || "Grounded evergreen search-answer enrichment.").slice(0, 500)
   });
@@ -352,10 +542,22 @@ async function main() {
 
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (invokedDirectly) {
+  const checkinIndex = process.argv.indexOf("--prepare-checkin");
   const requestIndex = process.argv.indexOf("--prepare-request");
   const fallbackIndex = process.argv.indexOf("--prepare-fallback");
   const promptIndex = process.argv.indexOf("--prepare-prompt");
-  if (requestIndex >= 0) {
+  if (checkinIndex >= 0) {
+    const outputPath = process.argv[checkinIndex + 1];
+    if (!outputPath) {
+      console.error("--prepare-checkin requires an output path");
+      process.exitCode = 1;
+    } else {
+      prepareCheckin(outputPath).catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+      });
+    }
+  } else if (requestIndex >= 0) {
     const outputPath = process.argv[requestIndex + 1];
     if (!outputPath) {
       console.error("--prepare-request requires an output path");
