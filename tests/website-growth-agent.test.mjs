@@ -72,6 +72,25 @@ test("time-sensitive claim language cannot enter low-risk auto publication", () 
   assert.equal(chooseArticle(pageMap, inventory), null);
 });
 
+test("noindex redirect aliases are monitored without being misreported as sitemap defects", () => {
+  const pageMap = new Map([["assessment.html", '<html><head><meta name="robots" content="noindex,follow"><link rel="canonical" href="https://energywithmark.com.au/upload-bill.html"></head><body>Redirect</body></html>']]);
+  const inventory = buildWebsiteInventory({ pageMap, sitemap: "<urlset></urlset>", now: new Date("2026-09-26T00:00:00Z") });
+  assert.equal(inventory[0].status, "Intentionally excluded");
+  assert.match(inventory[0].reason, /noindex page is intentionally excluded/);
+});
+
+test("indexable public pages missing from sitemap remain genuine technical issues", () => {
+  const pageMap = new Map([["example-assessment.html", '<html><head><meta name="robots" content="index,follow"></head><body>Example</body></html>']]);
+  const inventory = buildWebsiteInventory({ pageMap, sitemap: "<urlset></urlset>", now: new Date("2026-09-26T00:00:00Z") });
+  assert.equal(inventory[0].status, "Technical issue");
+  assert.match(inventory[0].reason, /Indexable public page exists but is missing/);
+});
+
+test("the indexable example assessment is declared in the production sitemap", async () => {
+  const sitemap = await read("sitemap.xml");
+  assert.match(sitemap, /https:\/\/energywithmark\.com\.au\/example-assessment\.html/);
+});
+
 test("growth prompt is grounded and explicitly denies risky claim classes and file edits", () => {
   const prompt = buildGrowthPrompt("articles/example.html", "<h1>Battery guide</h1><p>Use the existing energy profile.</p>");
   assert.match(prompt, /Use ONLY the supplied page text/);

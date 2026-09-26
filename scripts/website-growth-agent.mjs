@@ -159,6 +159,8 @@ export function buildWebsiteInventory({ pageMap, sitemap, now = new Date() }) {
     const pageText = stripHtml(html);
     const inSitemap = sitemapEntries.has(pagePath);
     const lastModified = sitemapEntries.get(pagePath) || "";
+    const noindex = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(html)
+      || /<meta\s+[^>]*content=["'][^"']*noindex[^"']*["'][^>]*name=["']robots["']/i.test(html);
     const pageClass = pagePath.startsWith("articles/")
       ? "article"
       : PROTECTED_ROOT_PAGES.has(pagePath) ? "protected_workflow" : "public_page";
@@ -172,9 +174,12 @@ export function buildWebsiteInventory({ pageMap, sitemap, now = new Date() }) {
     if (!html) {
       status = "Technical issue";
       reason = "Sitemap entry has no matching local HTML source.";
+    } else if (!inSitemap && noindex) {
+      status = "Intentionally excluded";
+      reason = "This noindex page is intentionally excluded from sitemap.xml while remaining monitored.";
     } else if (!inSitemap) {
       status = "Technical issue";
-      reason = "Public article exists but is missing from sitemap.xml.";
+      reason = "Indexable public page exists but is missing from sitemap.xml.";
     } else if (currentInformationRequired) {
       status = "Current information verification required";
       reason = "Time-sensitive or higher-risk claim language requires current evidence before automatic rewriting.";
