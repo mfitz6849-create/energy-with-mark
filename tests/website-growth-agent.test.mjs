@@ -174,7 +174,7 @@ test("scheduled workflow records every check and sends every visible change thro
   ]);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
-  assert.match(workflow, /cron: "17 1 \* \* \*"/);
+  assert.match(workflow, /cron: "17 \*\/6 \* \* \*"/);
   assert.match(workflow, /--prepare-checkin/);
   assert.match(workflow, /https:\/\/energy-with-mark-website-visibility-machine\.energywithmark-admin\.workers\.dev\/api\/website-growth\/checkin/);
   assert.match(workflow, /https:\/\/energy-with-mark-website-visibility-machine\.energywithmark-admin\.workers\.dev\/api\/website-growth\/prepare/);
