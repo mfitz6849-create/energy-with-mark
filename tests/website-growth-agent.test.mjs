@@ -157,9 +157,9 @@ test("scheduled workflow records every check and sends every visible change thro
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /cron: "17 1 \* \* \*"/);
   assert.match(workflow, /--prepare-checkin/);
-  assert.match(workflow, /https:\/\/intake\.energywithmark\.com\.au\/api\/website-growth\/checkin/);
-  assert.match(workflow, /https:\/\/intake\.energywithmark\.com\.au\/api\/website-growth\/prepare/);
-  assert.doesNotMatch(workflow, /control\.energywithmark\.com\.au\/api\/website-growth/);
+  assert.match(workflow, /https:\/\/energywithmark\.com\.au\/api\/website-growth\/checkin/);
+  assert.match(workflow, /https:\/\/energywithmark\.com\.au\/api\/website-growth\/prepare/);
+  assert.doesNotMatch(workflow, /(?:control|intake)\.energywithmark\.com\.au\/api\/website-growth/);
   assert.match(workflow, /--prepare-request/);
   assert.match(workflow, /ewm-growth\/run-/);
   assert.match(workflow, /gh workflow run website-growth-agent-ci\.yml/);
