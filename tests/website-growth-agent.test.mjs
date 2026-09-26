@@ -7,7 +7,9 @@ import {
   auditStaticDiscovery,
   buildGrowthPrompt,
   buildVisibilitySnapshot,
+  buildWebsiteInventory,
   chooseArticle,
+  extractSitemapEntries,
   groundedFallbackProposal,
   updateSitemapLastmod,
   validateProposal,
@@ -40,13 +42,34 @@ test("numeric or financial and time-sensitive claim language fails closed", () =
   assert.equal(validateProposal({ ...safeProposal, summary: `${safeProposal.summary} Typical payback may improve.` }).ok, false);
 });
 
-test("agent chooses only the first safe article without an enrichment marker", () => {
-  const map = new Map([
-    ["articles/how-big-should-home-battery-be.html", "<html><!-- EWM-GROWTH:START --></html>"],
-    ["articles/do-i-need-hybrid-inverter-for-battery.html", "<html>candidate</html>"],
-    ["articles/does-battery-mean-whole-home-backup.html", "<html>candidate two</html>"]
+test("whole-site inventory automatically admits a new low-risk educational article", () => {
+  const pageMap = new Map([
+    ["index.html", "<html><body>Home</body></html>"],
+    ["articles/new-useful-guide.html", '<html><body><div class="quick-answer">Answer</div><p>Evergreen solar education.</p></body></html>'],
   ]);
-  assert.equal(chooseArticle(map), "articles/do-i-need-hybrid-inverter-for-battery.html");
+  const sitemap = '<urlset><url><loc>https://energywithmark.com.au/</loc><lastmod>2026-09-20</lastmod></url><url><loc>https://energywithmark.com.au/articles/new-useful-guide.html</loc><lastmod>2026-09-20</lastmod></url></urlset>';
+  const inventory = buildWebsiteInventory({ pageMap, sitemap, now: new Date("2026-09-26T00:00:00Z") });
+  const candidate = inventory.find((item) => item.path === "articles/new-useful-guide.html");
+  assert.equal(candidate?.status, "Improvement opportunity");
+  assert.equal(candidate?.riskClass, "low");
+  assert.equal(chooseArticle(new Map([["articles/new-useful-guide.html", pageMap.get("articles/new-useful-guide.html")]]), inventory), "articles/new-useful-guide.html");
+});
+
+test("previously improved content returns for review after its cadence", () => {
+  const html = '<html><body><div class="quick-answer">Answer</div><!-- EWM-GROWTH:START -->old<!-- EWM-GROWTH:END --></body></html>';
+  const pageMap = new Map([["articles/old-guide.html", html]]);
+  const sitemap = '<urlset><url><loc>https://energywithmark.com.au/articles/old-guide.html</loc><lastmod>2026-07-01</lastmod></url></urlset>';
+  const inventory = buildWebsiteInventory({ pageMap, sitemap, now: new Date("2026-09-26T00:00:00Z") });
+  assert.equal(inventory[0].status, "Review due");
+});
+
+test("time-sensitive claim language cannot enter low-risk auto publication", () => {
+  const pageMap = new Map([["articles/rebate-guide.html", '<html><body><div class="quick-answer">Answer</div><p>A government rebate is available.</p></body></html>']]);
+  const sitemap = '<urlset><url><loc>https://energywithmark.com.au/articles/rebate-guide.html</loc><lastmod>2026-09-20</lastmod></url></urlset>';
+  const inventory = buildWebsiteInventory({ pageMap, sitemap, now: new Date("2026-09-26T00:00:00Z") });
+  assert.equal(inventory[0].status, "Current information verification required");
+  assert.equal(inventory[0].autoEligible, false);
+  assert.equal(chooseArticle(pageMap, inventory), null);
 });
 
 test("growth prompt is grounded and explicitly denies risky claim classes and file edits", () => {
@@ -60,7 +83,7 @@ test("growth prompt is grounded and explicitly denies risky claim classes and fi
   assert.match(prompt, /Battery guide Use the existing energy profile/);
 });
 
-test("agent inserts a visible answer block and FAQ structured data", () => {
+test("agent inserts or replaces one visible answer block and FAQ structured data", () => {
   const html = '<html><head><meta content="2026-08-08" property="article:modified_time"/><script type="application/ld+json">{"dateModified":"2026-08-08"}</script></head><body><div class="quick-answer"><span>Short answer</span><p>Existing answer.</p></div><h2>Next</h2></body></html>';
   const updated = applyGrowthBlock(html, safeProposal, "2026-09-15");
   assert.match(updated, /<!-- EWM-GROWTH:START -->/);
@@ -70,6 +93,9 @@ test("agent inserts a visible answer block and FAQ structured data", () => {
   assert.match(updated, /article:modified_time/);
   assert.match(updated, /content="2026-09-15" property="article:modified_time"/);
   assert.match(updated, /"dateModified":"2026-09-15"/);
+  const refreshed = applyGrowthBlock(updated, { ...safeProposal, summary: safeProposal.summary + " It should be reviewed again when the page meaning changes." }, "2026-09-26");
+  assert.equal((refreshed.match(/<!-- EWM-GROWTH:START -->/g) || []).length, 1);
+  assert.equal((refreshed.match(/id="ewm-growth-faq-schema"/g) || []).length, 1);
 });
 
 test("sitemap updater changes only the target article date", () => {
@@ -120,7 +146,7 @@ test("repository-grounded fallback is available only for reviewed matching pages
   assert.equal(groundedFallbackProposal("articles/not-reviewed.html", page), null);
 });
 
-test("scheduled workflow uses private Business System AI with OIDC and bounded pull-request publishing", async () => {
+test("scheduled workflow records every check and sends every visible change through guarded PR CI", async () => {
   const [workflow, ci, autoMerge, script] = await Promise.all([
     read(".github/workflows/website-growth-agent.yml"),
     read(".github/workflows/website-growth-agent-ci.yml"),
@@ -130,30 +156,28 @@ test("scheduled workflow uses private Business System AI with OIDC and bounded p
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /cron: "17 1 \* \* \*"/);
-  assert.match(workflow, /Website Visibility Agent/);
-  assert.match(workflow, /https:\/\/control\.energywithmark\.com\.au\/api\/website-growth\/prepare/);
+  assert.match(workflow, /--prepare-checkin/);
+  assert.match(workflow, /\/api\/website-growth\/checkin/);
+  assert.match(workflow, /\/api\/website-growth\/prepare/);
   assert.match(workflow, /--prepare-request/);
   assert.match(workflow, /ewm-growth\/run-/);
   assert.match(workflow, /gh workflow run website-growth-agent-ci\.yml/);
-  assert.doesNotMatch(workflow, /copilot-requests: write/);
-  assert.doesNotMatch(workflow, /Install GitHub Copilot CLI fallback/);
-  assert.match(workflow, /Prepare repository-grounded safe fallback/);
-  assert.match(workflow, /--prepare-fallback/);
   assert.match(workflow, /repository-grounded-safe-fallback/);
-  assert.match(workflow, /Publish the repository-reviewed fallback/);
-  assert.match(workflow, /git push origin HEAD:main/);
-  assert.match(workflow, /gh workflow run indexnow\.yml/);
-  assert.match(workflow, /model != 'repository-grounded-safe-fallback'/);
-  assert.match(workflow, /pull-request channel is unavailable, so nothing was published/);
-  assert.match(script, /DEFAULT_MODEL = "control-centre-workers-ai"/);
-  assert.match(script, /mode: "business-system-managed"/);
-  assert.match(script, /buildVisibilitySnapshot/);
-  assert.match(script, /aiSearchCrawlerAllowed/);
-  assert.match(script, /measurementBoundary/);
+  assert.doesNotMatch(workflow, /git push origin HEAD:main/);
+  assert.doesNotMatch(workflow, /how-big-should-home-battery-be\.html\|/);
+  assert.match(script, /buildWebsiteInventory/);
+  assert.match(script, /REVIEW_DAYS/);
+  assert.doesNotMatch(script, /SAFE_ARTICLES/);
   assert.match(ci, /workflow_dispatch:/);
   assert.match(ci, /Independently verify a dispatched generated article diff/);
   assert.match(autoMerge, /RUN_EVENT.*workflow_run\.event/s);
   assert.match(autoMerge, /visible-article/);
   assert.match(autoMerge, /pages\/builds/);
-  assert.match(autoMerge, /gh workflow run indexnow\.yml/);
+});
+
+
+test("sitemap extraction keeps canonical public page inventory separate from performance claims", () => {
+  const entries = extractSitemapEntries('<urlset><url><loc>https://energywithmark.com.au/</loc><lastmod>2026-09-26</lastmod></url><url><loc>https://energywithmark.com.au/articles/example.html</loc><lastmod>2026-09-20</lastmod></url></urlset>');
+  assert.equal(entries.get("index.html"), "2026-09-26");
+  assert.equal(entries.get("articles/example.html"), "2026-09-20");
 });

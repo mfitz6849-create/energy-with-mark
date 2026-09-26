@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  prepare-bounded-improvement:
+  continuous-review:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -30,33 +30,30 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run Website Growth safety tests before AI
+      - name: Run Website Visibility safety tests before AI
         run: node --test tests/website-growth-agent.test.mjs
 
-      - name: Prepare bounded Business System request
+      - name: Build whole-site inventory and bounded candidate
         id: candidate
         shell: bash
         run: |
           set -euo pipefail
+          node scripts/website-growth-agent.mjs --prepare-checkin /tmp/website-visibility-checkin.json
           node scripts/website-growth-agent.mjs --prepare-request /tmp/growth-request.json
           if [ ! -s /tmp/growth-request.json ]; then
             echo "has_candidate=false" >> "$GITHUB_OUTPUT"
-            echo "All current low-risk evergreen candidates are already enriched."
-            exit 0
+            echo "Whole-site review found no bounded low-risk page due for visible improvement."
+          else
+            echo "has_candidate=true" >> "$GITHUB_OUTPUT"
+            node -e 'const fs=require("fs"); const v=JSON.parse(fs.readFileSync("/tmp/growth-request.json","utf8")); console.log("Candidate: "+v.pagePath+" ("+v.reviewReason+")")'
           fi
-          echo "has_candidate=true" >> "$GITHUB_OUTPUT"
-          node -e 'const fs=require("fs"); const v=JSON.parse(fs.readFileSync("/tmp/growth-request.json","utf8")); console.log(`Candidate: ${v.pagePath}`)'
 
       - name: Request GitHub Actions OIDC token
-        if: steps.candidate.outputs.has_candidate == 'true'
         shell: bash
         run: |
           set -euo pipefail
           oidc_url="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=energy-with-mark-website-growth"
-          curl --fail --silent --show-error \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "$oidc_url" \
-            -o /tmp/oidc-response.json
+          curl --fail --silent --show-error             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "$oidc_url"             -o /tmp/oidc-response.json
           node - <<'NODE'
           const fs = require("fs");
           const payload = JSON.parse(fs.readFileSync("/tmp/oidc-response.json", "utf8"));
@@ -64,7 +61,17 @@ jobs:
           fs.writeFileSync("/tmp/oidc-token.txt", payload.value, { mode: 0o600 });
           NODE
 
-      - name: Ask the private Business System AI for one bounded proposal
+      - name: Record successful whole-site check
+        shell: bash
+        env:
+          CHECKIN_ENDPOINT: https://control.energywithmark.com.au/api/website-growth/checkin
+        run: |
+          set -euo pipefail
+          token="$(cat /tmp/oidc-token.txt)"
+          status="$(curl --silent --show-error --max-time 30             --output /tmp/checkin-response.json --write-out '%{http_code}'             --request POST             --header "Authorization: Bearer ${token}"             --header "Content-Type: application/json"             --data-binary @/tmp/website-visibility-checkin.json             "$CHECKIN_ENDPOINT")"
+          test "$status" = "200" || { cat /tmp/checkin-response.json >&2; exit 1; }
+
+      - name: Ask private Business System AI for one bounded proposal
         id: business_system
         if: steps.candidate.outputs.has_candidate == 'true'
         shell: bash
@@ -73,19 +80,11 @@ jobs:
         run: |
           set -euo pipefail
           token="$(cat /tmp/oidc-token.txt)"
-          status="$(curl --silent --show-error \
-            --max-time 45 \
-            --output /tmp/growth-runtime-response.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --header "Authorization: Bearer ${token}" \
-            --header "Content-Type: application/json" \
-            --data-binary @/tmp/growth-request.json \
-            "$GROWTH_ENDPOINT")"
+          status="$(curl --silent --show-error --max-time 45             --output /tmp/growth-runtime-response.json --write-out '%{http_code}'             --request POST             --header "Authorization: Bearer ${token}"             --header "Content-Type: application/json"             --data-binary @/tmp/growth-request.json             "$GROWTH_ENDPOINT")"
           if [ "$status" != "200" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Private Business System runtime returned HTTP $status; the repository-grounded safe fallback will be tried." >> "$GITHUB_STEP_SUMMARY"
+            echo "Private Business System runtime returned HTTP $status; a repository-reviewed fallback will be tried." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           node - <<'NODE'
@@ -97,8 +96,7 @@ jobs:
           if (response.pagePath !== request.pagePath) throw new Error("Business System response page path does not match this trusted run.");
           fs.writeFileSync("/tmp/business-system-proposal.json", JSON.stringify(response.proposal));
           fs.appendFileSync(process.env.GITHUB_OUTPUT, "available=true\n");
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${response.proposal.decision === "publish" ? "true" : "false"}\n`);
-          console.log(`Business System decision: ${response.proposal.decision}`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "publish="+(response.proposal.decision === "publish" ? "true" : "false")+"\n");
           NODE
 
       - name: Prepare repository-grounded safe fallback
@@ -111,13 +109,11 @@ jobs:
           echo "available=true" >> "$GITHUB_OUTPUT"
           if [ -s /tmp/growth-fallback-proposal.json ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "The private AI route was unavailable; a repository-reviewed proposal grounded in the selected page will be used." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "The private AI route was unavailable and no reviewed fallback matched. Nothing will be published." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Select the bounded proposal
+      - name: Select bounded proposal
         id: inference
         if: steps.candidate.outputs.has_candidate == 'true'
         shell: bash
@@ -132,16 +128,14 @@ jobs:
             echo "publish=$BUSINESS_PUBLISH" >> "$GITHUB_OUTPUT"
             echo "model=control-centre-workers-ai" >> "$GITHUB_OUTPUT"
             if [ "$BUSINESS_PUBLISH" = "true" ]; then cp /tmp/business-system-proposal.json /tmp/ai-response.json; fi
-            exit 0
-          fi
-          if [ "$FALLBACK_AVAILABLE" = "true" ]; then
+          elif [ "$FALLBACK_AVAILABLE" = "true" ]; then
             echo "publish=$FALLBACK_PUBLISH" >> "$GITHUB_OUTPUT"
             echo "model=repository-grounded-safe-fallback" >> "$GITHUB_OUTPUT"
             if [ "$FALLBACK_PUBLISH" = "true" ]; then cp /tmp/growth-fallback-proposal.json /tmp/ai-response.json; fi
-            exit 0
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "model=unavailable-safe-no-change" >> "$GITHUB_OUTPUT"
           fi
-          echo "publish=false" >> "$GITHUB_OUTPUT"
-          echo "model=unavailable-safe-no-change" >> "$GITHUB_OUTPUT"
 
       - name: Apply one low-risk grounded improvement
         if: steps.inference.outputs.publish == 'true'
@@ -155,49 +149,25 @@ jobs:
         if: steps.inference.outputs.publish == 'true'
         run: node --test tests/website-growth-agent.test.mjs
 
-      - name: Verify the generated diff is exactly one safe visible page plus evidence files
+      - name: Verify generated diff is one classified low-risk article plus evidence files
         id: diff
         if: steps.inference.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          article="$(node -e 'const fs=require("fs"); process.stdout.write(JSON.parse(fs.readFileSync("/tmp/growth-request.json","utf8")).pagePath)')"
+          article="$(node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync("/tmp/growth-request.json","utf8")); if(r.riskClass!=="low"||r.pageClass!=="article") process.exit(2); process.stdout.write(r.pagePath)')"
+          [[ "$article" =~ ^articles/[a-z0-9-]+\.html$ ]] || { echo "Unsafe article path" >&2; exit 1; }
           git diff --name-only > /tmp/growth-paths.txt
           cat /tmp/growth-paths.txt
           test "$(wc -l < /tmp/growth-paths.txt | tr -d ' ')" = "3"
           grep -Fxq "$article" /tmp/growth-paths.txt
           grep -Fxq "sitemap.xml" /tmp/growth-paths.txt
           grep -Fxq "growth-agent-status.json" /tmp/growth-paths.txt
-          case "$article" in
-            articles/how-big-should-home-battery-be.html|\
-            articles/do-i-need-hybrid-inverter-for-battery.html|\
-            articles/does-battery-mean-whole-home-backup.html|\
-            articles/how-ev-changes-solar-sizing.html|\
-            articles/what-information-needed-for-solar-assessment.html|\
-            articles/what-is-solar-self-consumption.html|\
-            articles/why-i-need-your-electricity-bill.html) ;;
-            *) echo "Refusing non-allowlisted Website Growth article: $article" >&2; exit 1 ;;
-          esac
           echo "article=$article" >> "$GITHUB_OUTPUT"
 
-      - name: Publish the repository-reviewed fallback
-        if: steps.inference.outputs.publish == 'true' && steps.inference.outputs.model == 'repository-grounded-safe-fallback'
-        shell: bash
-        env:
-          ARTICLE: ${{ steps.diff.outputs.article }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          git config user.name "Energy With Mark Website Visibility Agent"
-          git config user.email "actions@users.noreply.github.com"
-          git add "$ARTICLE" sitemap.xml growth-agent-status.json
-          git commit -m "Website Visibility Agent: publish reviewed grounded fallback"
-          git push origin HEAD:main
-          gh workflow run indexnow.yml --repo "$GITHUB_REPOSITORY" --ref main
-
-      - name: Create reviewed Website Growth branch and pull request
+      - name: Create guarded Website Visibility pull request
         id: pr
-        if: steps.inference.outputs.publish == 'true' && steps.inference.outputs.model != 'repository-grounded-safe-fallback'
+        if: steps.inference.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -209,29 +179,45 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git switch -c "$branch"
           git add "$ARTICLE" sitemap.xml growth-agent-status.json
-          git commit -m "Website Visibility Agent: grounded evergreen improvement"
+          git commit -m "Website Visibility Agent: low-risk continuous improvement"
           git push origin "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
-          set +e
-          pr_url="$(gh pr create \
-            --repo "$GITHUB_REPOSITORY" \
-            --base main \
-            --head "$branch" \
-            --title "[Website Visibility Agent] Grounded evergreen improvement" \
-            --body "Business System Website Growth run ${GITHUB_RUN_ID}. One allowlisted evergreen article only, grounded in the page's existing published content. Deterministic safety tests passed before and after generation. No financial, incentive, product, legal, customer-workflow, calculator, booking, bill-upload or lead-capture changes are permitted by this run." 2>/tmp/growth-pr-error.txt)"
-          code=$?
-          set -e
-          if [ "$code" -ne 0 ]; then
-            echo "pr_url=" >> "$GITHUB_OUTPUT"
-            echo "The AI proposal was saved on $branch but the pull-request channel is unavailable, so nothing was published." >> "$GITHUB_STEP_SUMMARY"
-            sed -n '1,20p' /tmp/growth-pr-error.txt >&2 || true
-            exit 0
-          fi
-          echo "Created $pr_url"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          pr_url="$(gh pr create             --repo "$GITHUB_REPOSITORY"             --base main             --head "$branch"             --title "[Website Visibility Agent] Low-risk continuous improvement"             --body "Whole-site Website Visibility run ${GITHUB_RUN_ID}. One dynamically classified low-risk educational article only. The change is grounded in the page's already-published facts, passed deterministic safety tests before and after generation, and cannot modify customer workflows or automatically add financial, incentive, legal, product-specification or other current-information claims.")"
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "Created $pr_url"
 
-      - name: Dispatch independent Website Growth CI on the proposed branch
-        if: steps.inference.outputs.publish == 'true' && steps.inference.outputs.model != 'repository-grounded-safe-fallback' && steps.pr.outputs.pr_url != ''
+      - name: Record proposed change provenance
+        if: steps.inference.outputs.publish == 'true' && steps.pr.outputs.pr_url != ''
+        shell: bash
+        env:
+          CHECKIN_ENDPOINT: https://control.energywithmark.com.au/api/website-growth/checkin
+          ARTICLE: ${{ steps.diff.outputs.article }}
+          RESULTING_REVISION: ${{ steps.pr.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require("fs");
+          const checkin=JSON.parse(fs.readFileSync("/tmp/website-visibility-checkin.json","utf8"));
+          const proposal=JSON.parse(fs.readFileSync("/tmp/ai-response.json","utf8"));
+          checkin.state="change_proposed";
+          checkin.candidatePath=process.env.ARTICLE;
+          checkin.change={
+            pagePath:process.env.ARTICLE,
+            previousRevision:process.env.GITHUB_SHA,
+            resultingRevision:process.env.RESULTING_REVISION,
+            reason:String(proposal.reason||"Grounded low-risk continuous website improvement").slice(0,1000),
+            riskClass:"low",
+            testsPassed:["website-growth-agent.test.mjs before generation","website-growth-agent.test.mjs after generation","bounded diff verification"],
+            publicationState:"proposed"
+          };
+          fs.writeFileSync("/tmp/website-visibility-change-checkin.json",JSON.stringify(checkin));
+          NODE
+          token="$(cat /tmp/oidc-token.txt)"
+          curl --fail --silent --show-error --max-time 30             --request POST             --header "Authorization: Bearer ${token}"             --header "Content-Type: application/json"             --data-binary @/tmp/website-visibility-change-checkin.json             "$CHECKIN_ENDPOINT" >/dev/null
+
+      - name: Dispatch independent Website Visibility CI
+        if: steps.inference.outputs.publish == 'true' && steps.pr.outputs.pr_url != ''
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ steps.pr.outputs.branch }}
@@ -243,15 +229,13 @@ jobs:
           {
             echo "### Website Visibility Agent"
             if [ "${{ steps.candidate.outputs.has_candidate }}" != "true" ]; then
-              echo "No unenriched low-risk article candidate remains."
+              echo "Whole-site check completed. No bounded low-risk page currently needs a visible change."
             elif [ "${{ steps.inference.outputs.publish }}" != "true" ]; then
-              echo "The available bounded inference route returned no safe grounded visible change. Nothing was published."
-            elif [ "${{ steps.inference.outputs.model }}" = "repository-grounded-safe-fallback" ]; then
-              echo "A repository-reviewed, page-grounded fallback passed the safety suite and was published directly to main."
+              echo "A page is review-due, but the bounded inference route returned no safe grounded visible change."
             elif [ -n "${{ steps.pr.outputs.pr_url }}" ]; then
-              echo "A bounded low-risk AI proposal was re-tested, committed to an ewm-growth branch and sent to independent Website Growth CI."
+              echo "A low-risk proposal was re-tested and sent through the normal pull-request and independent Website Visibility CI path."
               echo "Pull request: ${{ steps.pr.outputs.pr_url }}"
             else
-              echo "A bounded AI proposal was saved on a review branch but not published because the pull-request channel is unavailable."
+              echo "A safe proposal was prepared but no source change was published."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
