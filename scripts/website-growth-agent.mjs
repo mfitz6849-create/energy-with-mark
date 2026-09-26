@@ -205,17 +205,23 @@ export function buildGrowthPrompt(articlePath, articleHtml) {
 }
 
 export function applyGrowthBlock(html, proposal, today) {
-  let base = html
-    .replace(new RegExp(GROWTH_MARKER.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\export function applyGrowthBlock(html, proposal, today) {
-  const quickAnswerStart = html.indexOf('class="quick-answer"');
-  const quickAnswerClose = quickAnswerStart >= 0 ? html.indexOf("</div>", quickAnswerStart) : -1;
+  let base = html;
+  const existingStart = base.indexOf(GROWTH_MARKER);
+  const existingEnd = existingStart >= 0 ? base.indexOf(GROWTH_END_MARKER, existingStart) : -1;
+  if (existingStart >= 0 && existingEnd >= 0) {
+    base = base.slice(0, existingStart) + base.slice(existingEnd + GROWTH_END_MARKER.length);
+  }
+  base = base.replace(/<script id="ewm-growth-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/g, "");
+
+  const quickAnswerStart = base.indexOf('class="quick-answer"');
+  const quickAnswerClose = quickAnswerStart >= 0 ? base.indexOf("</div>", quickAnswerStart) : -1;
   if (quickAnswerClose < 0) throw new Error("Could not find the existing quick-answer block.");
   const insertionPoint = quickAnswerClose + "</div>".length;
   const matters = proposal.whatMatters.map((item) => `<li>${htmlEscape(item)}</li>`).join("");
   const faqVisible = proposal.faq.map((item) => `<h3>${htmlEscape(item.q)}</h3><p>${htmlEscape(item.a)}</p>`).join("");
-  const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div><!-- EWM-GROWTH:END -->`;
+  const visibleBlock = `${GROWTH_MARKER}<div class="example-box ewm-growth-answer"><h2>What matters most</h2><p>${htmlEscape(proposal.summary)}</p><ul>${matters}</ul><h2>Common questions</h2>${faqVisible}</div>${GROWTH_END_MARKER}`;
 
-  let updated = html.slice(0, insertionPoint) + visibleBlock + html.slice(insertionPoint);
+  let updated = base.slice(0, insertionPoint) + visibleBlock + base.slice(insertionPoint);
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
