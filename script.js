@@ -93,34 +93,24 @@ const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
 
 if (navLinks) {
-  navLinks.querySelectorAll('a').forEach(link => {
-    let path = '';
-    try { path = new URL(link.href, window.location.href).pathname; } catch (_) {}
-    if (path.endsWith('/calculator.html')) {
-      link.href = siteUrl('calculator.html');
-      link.textContent = 'Full Calculator';
-    } else if (path.endsWith('/home.html')) {
-      link.href = siteUrl('home.html');
-      link.textContent = 'Homeowners';
-    }
-  });
-
-  if (![...navLinks.querySelectorAll('a[href]')].some(link => {
-    try { return new URL(link.href, window.location.href).pathname === '/community.html'; } catch (_) { return false; }
-  })) {
+  const navigation = [
+    ['index.html#who-i-help', 'Who I Help'],
+    ['index.html#how-it-works', 'How It Works'],
+    ['learn.html', 'Learn'],
+    ['how-i-help.html', 'About Mark'],
+    ['contact.html', 'Ask Mark']
+  ];
+  navLinks.replaceChildren(...navigation.map(([href, label]) => {
     const link = document.createElement('a');
-    link.href = siteUrl('community.html');
-    link.textContent = 'Clubs & Community';
-    navLinks.appendChild(link);
-  }
-  const hasAskMark = [...navLinks.querySelectorAll('a[href]')].some(link => {
-    try { return new URL(link.href, window.location.href).pathname === '/contact.html'; } catch (_) { return false; }
-  });
-  if (!hasAskMark) {
-    const askMark = document.createElement('a');
-    askMark.href = siteUrl('contact.html');
-    askMark.textContent = 'Ask Mark';
-    navLinks.appendChild(askMark);
+    link.href = siteUrl(href);
+    link.textContent = label;
+    return link;
+  }));
+
+  const headerAction = document.querySelector('.header .nav > a.btn');
+  if (headerAction) {
+    headerAction.href = siteUrl('index.html#solar-check');
+    headerAction.textContent = 'Start Free Check';
   }
 }
 
@@ -249,7 +239,7 @@ function createTrustRow(variant = 'primary', title = 'Free advice from Mark', te
     person.className = 'footer-person';
     person.appendChild(createPortrait('primary', 'compact'));
     const copy = document.createElement('div');
-    copy.innerHTML = '<strong>Mark Fitzpatrick</strong><span>Free solar & battery advice</span>';
+    copy.innerHTML = '<strong>Mark Fitzpatrick</strong><span>Solar • Batteries • Energy Advice</span>';
     person.appendChild(copy);
     footerFirst.appendChild(person);
   }
@@ -330,7 +320,9 @@ function sendAnalyticsEvent(name, params = {}) {
 document.querySelectorAll('a[href]').forEach(link => {
   link.addEventListener('click', () => {
     const href = link.getAttribute('href') || '';
-    if (href.includes('calculator.html') || href === '#solar-check' || href === '#calculator') {
+    if (href === '#solar-check' || href.endsWith('#solar-check')) {
+      sendAnalyticsEvent('quick_check_start');
+    } else if (href.includes('calculator.html') || href === '#calculator') {
       sendAnalyticsEvent('calculator_start');
     } else if (href.includes('upload-bill.html')) {
       sendAnalyticsEvent('bill_upload_start');
