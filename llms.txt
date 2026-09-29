@@ -3,7 +3,7 @@
 Energy With Mark is the public solar, battery and energy-advice website of Mark Fitzpatrick, Renewable Energy Specialist in Australia.
 
 ## Purpose
-The site explains solar, batteries, power bills and energy decisions in plain English. General website content is educational. Customer-specific recommendations require customer-specific information such as a recent electricity bill, site details, existing equipment and goals.
+The site helps people understand solar, batteries, power bills and energy decisions in plain English. The public journey starts with the customer's situation, then uses real evidence where useful. The Energy Assessment is the core evidence-backed decision step. General website content is educational; customer-specific recommendations require customer-specific information such as a recent electricity bill, site details, existing equipment and goals.
 
 ## Primary pages
 - Home: https://energywithmark.com.au/
