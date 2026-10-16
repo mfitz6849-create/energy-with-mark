@@ -109,8 +109,8 @@ if (navLinks) {
 
   const headerAction = document.querySelector('.header .nav > a.btn');
   if (headerAction) {
-    headerAction.href = siteUrl('index.html#solar-check');
-    headerAction.textContent = 'Start Free Check';
+    headerAction.href = siteUrl('book.html');
+    headerAction.textContent = 'Book a Consultation';
   }
 }
 

@@ -7,8 +7,9 @@ const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
 test("homepage leads with the customer decision rather than a product or internal funnel", async()=>{
   const home=await read("index.html");
   assert.match(home,/Understand your energy situation <em>before you buy anything\.<\/em>/);
-  assert.match(home,/Start Free Energy Check/);
-  assert.match(home,/I Already Have a Bill/);
+  assert.match(home,/Book a Consultation/);
+  assert.match(home,/Check My Energy Options/);
+  assert.match(home,/No bill needed to book/);
   assert.match(home,/full Energy Assessment/);
   assert.match(home,/Solar, battery, tariff change, waiting — or no change/);
   assert.doesNotMatch(home,/Find out if solar can help you in less than/);
@@ -43,7 +44,7 @@ test("public navigation is small and consistent at runtime", async()=>{
   assert.match(script,/\['learn\.html', 'Learn'\]/);
   assert.match(script,/\['how-i-help\.html', 'About Mark'\]/);
   assert.match(script,/\['contact\.html', 'Ask Mark'\]/);
-  assert.match(script,/headerAction\.textContent = 'Start Free Check'/);
+  assert.match(script,/headerAction\.textContent = 'Book a Consultation'/);
 });
 
 test("quick check and full calculator have distinct analytics semantics", async()=>{

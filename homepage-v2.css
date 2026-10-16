@@ -349,3 +349,4 @@ body.public-v2 {
   outline: 3px solid var(--gold);
   outline-offset: 3px;
 }
+@media(max-width:760px){.ewm-home .mobile-cta{gap:8px}.ewm-home .mobile-cta .btn{flex:1;min-width:0;padding:10px 8px;font-size:.78rem;text-align:center}}
